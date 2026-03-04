@@ -1,11 +1,12 @@
 "use client";
 
-import { Alert, Box, Button, CircularProgress, Container, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Container, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getCompanies,
+  getCompanyUsersWithRoles,
   getProjectUsers,
   getProjects,
   getScheduleByProject,
@@ -54,6 +55,7 @@ export function HomePage() {
   const [dataLoading, setDataLoading] = useState(false);
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [links, setLinks] = useState<GraphLink[]>([]);
+  const [search, setSearch] = useState("");
 
   const categories = useMemo(
     () => [
@@ -66,6 +68,47 @@ export function HomePage() {
     ],
     []
   );
+
+  const { displayNodes, displayLinks } = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return { displayNodes: nodes, displayLinks: links };
+    }
+
+    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const matchedNodeIds = new Set<string>();
+    for (const node of nodes) {
+      if (node.name.toLowerCase().includes(query) || node.id.toLowerCase().includes(query)) {
+        matchedNodeIds.add(node.id);
+      }
+    }
+
+    const matchedLinkKeys = new Set<string>();
+    const includedNodeIds = new Set<string>(matchedNodeIds);
+    for (const link of links) {
+      const sourceNode = nodeById.get(link.source);
+      const targetNode = nodeById.get(link.target);
+      const sourceText = `${link.source} ${sourceNode?.name ?? ""}`.toLowerCase();
+      const targetText = `${link.target} ${targetNode?.name ?? ""}`.toLowerCase();
+      const valueText = (link.value ?? "").toLowerCase();
+      const isMatch =
+        valueText.includes(query) || sourceText.includes(query) || targetText.includes(query);
+      if (isMatch) {
+        matchedLinkKeys.add(`${link.source}|${link.target}|${link.value ?? ""}`);
+        includedNodeIds.add(link.source);
+        includedNodeIds.add(link.target);
+      }
+    }
+
+    const filteredNodes = nodes.filter((node) => includedNodeIds.has(node.id));
+    const filteredLinks = links.filter((link) => {
+      if (!includedNodeIds.has(link.source) || !includedNodeIds.has(link.target)) return false;
+      if (matchedNodeIds.has(link.source) || matchedNodeIds.has(link.target)) return true;
+      return matchedLinkKeys.has(`${link.source}|${link.target}|${link.value ?? ""}`);
+    });
+
+    return { displayNodes: filteredNodes, displayLinks: filteredLinks };
+  }, [nodes, links, search]);
 
   useEffect(() => {
     if (!loading && !token) {
@@ -97,11 +140,18 @@ export function HomePage() {
             symbolSize: 64
           });
 
-          const [projects, companyUsers] = await Promise.all([
+          const [projects, companyUsers, companyUserRoles] = await Promise.all([
             getProjects(token, company.id).catch(() => []),
-            getUsers(token, company.id).catch(() => [])
+            getUsers(token, company.id).catch(() => []),
+            getCompanyUsersWithRoles(token, company.id).catch(() => [])
           ]);
           const displayUsers = prepareUsersForDisplay(companyUsers);
+          const rolesByUser = new Map<number, string[]>();
+          for (const roleItem of companyUserRoles) {
+            const existing = rolesByUser.get(roleItem.id) ?? [];
+            existing.push(roleItem.role);
+            rolesByUser.set(roleItem.id, existing);
+          }
 
           for (const user of displayUsers) {
             const userId = `user-${user.id}`;
@@ -114,7 +164,14 @@ export function HomePage() {
                 symbolSize: 40
               });
             }
-            graphLinks.push({ source: companyId, target: userId, value: "company" });
+            const userRoles = rolesByUser.get(user.id);
+            if (userRoles?.length) {
+              for (const role of userRoles) {
+                graphLinks.push({ source: companyId, target: userId, value: role });
+              }
+            } else {
+              graphLinks.push({ source: companyId, target: userId, value: "company" });
+            }
           }
 
           for (const project of projects) {
@@ -219,7 +276,7 @@ export function HomePage() {
   }, [token]);
 
   useEffect(() => {
-    if (!chartRef.current || !nodes.length) return;
+    if (!chartRef.current) return;
 
     let disposed = false;
     let chart: {
@@ -267,8 +324,8 @@ export function HomePage() {
             roam: true,
             draggable: true,
             cursor: "pointer",
-            data: nodes,
-            links,
+            data: displayNodes,
+            links: displayLinks,
             categories,
             force: {
               repulsion: 360,
@@ -336,7 +393,7 @@ export function HomePage() {
       chart?.dispose();
       chartInstanceRef.current = null;
     };
-  }, [nodes, links, categories, router]);
+  }, [displayNodes, displayLinks, categories, router]);
 
   return (
     <Container
@@ -352,6 +409,22 @@ export function HomePage() {
     >
       <Typography variant="h4" sx={{ mb: 1 }}>
         Context Graph
+      </Typography>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 1.5 }}>
+        <TextField
+          size="small"
+          fullWidth
+          label="Search nodes and edges"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="node title, id, role name..."
+        />
+        <Button variant="outlined" onClick={() => setSearch("")} disabled={!search}>
+          Clear
+        </Button>
+      </Stack>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Showing {displayNodes.length} nodes and {displayLinks.length} edges
       </Typography>
       {(loading || dataLoading) && (
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
