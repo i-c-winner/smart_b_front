@@ -52,8 +52,15 @@ export type Task = {
 export type Schedule = {
   id: number;
   project_id: number;
+  task_id: number | null;
+  section_id: number | null;
   title: string;
   description: string | null;
+  planned_start_at: string | null;
+  planned_end_at: string | null;
+  actual_start_at: string | null;
+  actual_end_at: string | null;
+  section_editor_user_id: number | null;
   created_by: number;
 };
 

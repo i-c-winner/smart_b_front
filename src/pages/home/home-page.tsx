@@ -33,13 +33,6 @@ type GraphLink = {
   value?: string;
 };
 
-function parseNodeId(nodeId: string): { type: string; id: number } | null {
-  const [type, rawId] = nodeId.split("-", 2);
-  const id = Number(rawId);
-  if (!type || Number.isNaN(id)) return null;
-  return { type, id };
-}
-
 export function HomePage() {
   const router = useRouter();
   const { token, loading } = useAuth();
@@ -203,6 +196,13 @@ export function HomePage() {
               getTasksByProject(token, project.id).catch(() => []),
               getScheduleByProject(token, project.id).catch(() => [])
             ]);
+            const taskSchedules = schedules.filter((schedule) => schedule.task_id && !schedule.section_id);
+            const scheduleByTaskId = new Map<number, number>();
+            for (const schedule of taskSchedules) {
+              if (schedule.task_id) {
+                scheduleByTaskId.set(schedule.task_id, schedule.id);
+              }
+            }
 
             for (const task of tasks) {
               const taskId = `task-${task.id}`;
@@ -239,7 +239,7 @@ export function HomePage() {
               }
             }
 
-            for (const schedule of schedules) {
+            for (const schedule of taskSchedules) {
               const scheduleId = `schedule-${schedule.id}`;
               graphNodes.push({
                 id: scheduleId,
@@ -367,11 +367,22 @@ export function HomePage() {
       });
 
       chart.on("click", (params: unknown) => {
-        const payload = params as { dataType?: string; data?: { id?: string } };
-        if (payload.dataType !== "node" || !payload.data?.id) return;
-        const parsed = parseNodeId(payload.data.id);
-        if (!parsed) return;
-        router.push(`/nodes/${parsed.type}/${parsed.id}`);
+        if (!params || typeof params !== "object") return;
+        const event = params as { dataType?: string; data?: { id?: string } };
+        if (event.dataType !== "node") return;
+        const rawId = event.data?.id;
+        if (!rawId) return;
+        if (rawId.startsWith("schedule-")) {
+          const scheduleId = rawId.replace("schedule-", "");
+          if (!scheduleId) return;
+          router.push(`/schedules/${scheduleId}`);
+          return;
+        }
+        if (rawId.startsWith("task-")) {
+          const taskId = rawId.replace("task-", "");
+          if (!taskId) return;
+          router.push(`/tasks/${taskId}`);
+        }
       });
 
       const onResize = () => chart?.resize();

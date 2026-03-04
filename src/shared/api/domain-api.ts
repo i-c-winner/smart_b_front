@@ -15,6 +15,10 @@ export function getUsers(token: string, companyId?: number): Promise<User[]> {
   return http<User[]>(`/users${suffix}`, undefined, token);
 }
 
+export function getGlobalAdmins(token: string): Promise<User[]> {
+  return http<User[]>("/users/global-admins", undefined, token);
+}
+
 export function getCompanies(token: string): Promise<Company[]> {
   return http<Company[]>('/companies', undefined, token);
 }
@@ -72,7 +76,14 @@ export function getTaskSections(token: string, taskId: number): Promise<TaskSect
 export function createTaskSection(
   token: string,
   taskId: number,
-  payload: { key: string; title: string; content?: Record<string, unknown> | null; position?: number }
+  payload: {
+    key: string;
+    title: string;
+    content?: Record<string, unknown> | null;
+    position?: number;
+    planned_start_at?: string | null;
+    planned_end_at?: string | null;
+  }
 ): Promise<TaskSection> {
   return http(`/tasks/${taskId}/sections`, { method: "POST", body: JSON.stringify(payload) }, token);
 }
@@ -181,11 +192,37 @@ export function createProject(token: string, payload: { company_id: number; name
   return http<Project>('/projects', { method: 'POST', body: JSON.stringify(payload) }, token);
 }
 
+export function deleteProject(token: string, projectId: number): Promise<void> {
+  return http(`/projects/${projectId}`, { method: "DELETE" }, token);
+}
+
 export function createCompanyUser(
   token: string,
-  payload: { company_id: number; email: string; full_name: string; password: string }
+  payload: {
+    company_id: number;
+    email: string;
+    full_name: string;
+    password: string;
+    role?: "company_viewer" | "company_member" | "company_admin";
+  }
 ): Promise<User> {
   return http<User>('/users', { method: 'POST', body: JSON.stringify(payload) }, token);
+}
+
+export function removeCompanyUser(token: string, userId: number, companyId: number): Promise<void> {
+  return http(`/users/${userId}/companies/${companyId}`, { method: "DELETE" }, token);
+}
+
+export function updateCompanyUserRole(
+  token: string,
+  userId: number,
+  companyId: number,
+  role: "company_viewer" | "company_member" | "company_admin"
+): Promise<void> {
+  return http(`/users/${userId}/companies/${companyId}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role })
+  }, token);
 }
 
 export function assignProjectAdmin(token: string, projectId: number, userId: number): Promise<unknown> {
@@ -197,4 +234,16 @@ export function assignProjectAdmin(token: string, projectId: number, userId: num
 
 export function clearProjectAdmin(token: string, projectId: number, userId: number): Promise<void> {
   return http(`/projects/${projectId}/assign-admin/${userId}`, { method: "DELETE" }, token);
+}
+
+export function assignProjectUserRole(
+  token: string,
+  projectId: number,
+  payload: { user_id: number; role: "project_viewer" | "project_member" | "project_manager" }
+): Promise<ScopedUserRole> {
+  return http(`/projects/${projectId}/assign-role`, { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export function clearProjectUserRoles(token: string, projectId: number, userId: number): Promise<void> {
+  return http(`/projects/${projectId}/assign-role/${userId}`, { method: "DELETE" }, token);
 }
