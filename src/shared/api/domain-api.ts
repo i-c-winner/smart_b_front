@@ -1,5 +1,14 @@
 import { http } from "@/shared/api/http";
-import type { Company, Project, Schedule, ScopedUserRole, Task, User } from "@/shared/types/domain";
+import type {
+  Company,
+  Project,
+  Schedule,
+  ScopedUserRole,
+  Task,
+  TaskSection,
+  TaskSectionPermission,
+  User
+} from "@/shared/types/domain";
 
 export function getUsers(token: string, companyId?: number): Promise<User[]> {
   const suffix = companyId ? `?company_id=${companyId}` : "";
@@ -8,6 +17,17 @@ export function getUsers(token: string, companyId?: number): Promise<User[]> {
 
 export function getCompanies(token: string): Promise<Company[]> {
   return http<Company[]>('/companies', undefined, token);
+}
+
+export function getCompany(token: string, companyId: number): Promise<Company> {
+  return http<Company>(`/companies/${companyId}`, undefined, token);
+}
+
+export function getCompanyUsersWithRoles(
+  token: string,
+  companyId: number
+): Promise<Array<{ id: number; email: string; full_name: string; role: string }>> {
+  return http(`/companies/${companyId}/users`, undefined, token);
 }
 
 export function getProjects(token: string, companyId: number): Promise<Project[]> {
@@ -26,11 +46,73 @@ export function getTasksByProject(token: string, projectId: number): Promise<Tas
   return http(`/tasks/project/${projectId}`, undefined, token);
 }
 
+export function getTask(token: string, taskId: number): Promise<Task> {
+  return http(`/tasks/${taskId}`, undefined, token);
+}
+
 export function createTask(
   token: string,
-  payload: { project_id: number; title: string; description?: string | null }
+  payload: { project_id: number; title: string; description?: string | null; value?: Array<Record<string, string>> | null }
 ): Promise<Task> {
   return http('/tasks', { method: 'POST', body: JSON.stringify(payload) }, token);
+}
+
+export function updateTaskValue(
+  token: string,
+  taskId: number,
+  payload: { value: Array<Record<string, string>> | null }
+): Promise<Task> {
+  return http(`/tasks/${taskId}/value`, { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export function getTaskSections(token: string, taskId: number): Promise<TaskSection[]> {
+  return http(`/tasks/${taskId}/sections`, undefined, token);
+}
+
+export function createTaskSection(
+  token: string,
+  taskId: number,
+  payload: { key: string; title: string; content?: Record<string, unknown> | null; position?: number }
+): Promise<TaskSection> {
+  return http(`/tasks/${taskId}/sections`, { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export function updateTaskSection(
+  token: string,
+  taskId: number,
+  sectionId: number,
+  payload: { key?: string; title?: string; content?: Record<string, unknown> | null; position?: number }
+): Promise<TaskSection> {
+  return http(`/tasks/${taskId}/sections/${sectionId}`, { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export function deleteTaskSection(token: string, taskId: number, sectionId: number): Promise<void> {
+  return http(`/tasks/${taskId}/sections/${sectionId}`, { method: "DELETE" }, token);
+}
+
+export function getTaskSectionPermissions(
+  token: string,
+  taskId: number,
+  sectionId: number
+): Promise<TaskSectionPermission[]> {
+  return http(`/tasks/${taskId}/sections/${sectionId}/permissions`, undefined, token);
+}
+
+export function assignTaskSectionPermission(
+  token: string,
+  taskId: number,
+  sectionId: number,
+  userId: number,
+  payload: { role: "section_viewer" | "section_editor" | "section_manager" }
+): Promise<TaskSectionPermission> {
+  return http(`/tasks/${taskId}/sections/${sectionId}/permissions/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  }, token);
+}
+
+export function clearTaskSectionPermission(token: string, taskId: number, sectionId: number, userId: number): Promise<void> {
+  return http(`/tasks/${taskId}/sections/${sectionId}/permissions/${userId}`, { method: "DELETE" }, token);
 }
 
 export function deleteTask(token: string, taskId: number): Promise<void> {
@@ -49,8 +131,16 @@ export function assignTaskUserRole(
   return http(`/tasks/${taskId}/assign-role`, { method: "POST", body: JSON.stringify(payload) }, token);
 }
 
+export function clearTaskUserRoles(token: string, taskId: number, userId: number): Promise<void> {
+  return http(`/tasks/${taskId}/assign-role/${userId}`, { method: "DELETE" }, token);
+}
+
 export function getScheduleByProject(token: string, projectId: number): Promise<Schedule[]> {
   return http(`/schedules/project/${projectId}`, undefined, token);
+}
+
+export function getSchedule(token: string, scheduleId: number): Promise<Schedule> {
+  return http(`/schedules/${scheduleId}`, undefined, token);
 }
 
 export function createSchedule(
@@ -76,6 +166,10 @@ export function assignScheduleUserRole(
   return http(`/schedules/${scheduleId}/assign-role`, { method: "POST", body: JSON.stringify(payload) }, token);
 }
 
+export function clearScheduleUserRoles(token: string, scheduleId: number, userId: number): Promise<void> {
+  return http(`/schedules/${scheduleId}/assign-role/${userId}`, { method: "DELETE" }, token);
+}
+
 export function getProjectAdmins(
   token: string,
   companyId: number
@@ -99,4 +193,8 @@ export function assignProjectAdmin(token: string, projectId: number, userId: num
     method: 'POST',
     body: JSON.stringify({ user_id: userId })
   }, token);
+}
+
+export function clearProjectAdmin(token: string, projectId: number, userId: number): Promise<void> {
+  return http(`/projects/${projectId}/assign-admin/${userId}`, { method: "DELETE" }, token);
 }

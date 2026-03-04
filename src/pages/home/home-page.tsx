@@ -5,9 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getCompanies,
+  getProjectUsers,
   getProjects,
   getScheduleByProject,
   getScheduleUsers,
+  getTaskSectionPermissions,
+  getTaskSections,
   getTasksByProject,
   getTaskUsers,
   getUsers
@@ -28,6 +31,13 @@ type GraphLink = {
   value?: string;
 };
 
+function parseNodeId(nodeId: string): { type: string; id: number } | null {
+  const [type, rawId] = nodeId.split("-", 2);
+  const id = Number(rawId);
+  if (!type || Number.isNaN(id)) return null;
+  return { type, id };
+}
+
 export function HomePage() {
   const router = useRouter();
   const { token, loading } = useAuth();
@@ -37,6 +47,7 @@ export function HomePage() {
     resize: () => void;
     dispose: () => void;
     dispatchAction: (payload: unknown) => void;
+    on: (eventName: string, handler: (params: unknown) => void) => void;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
@@ -49,7 +60,8 @@ export function HomePage() {
       { name: "Project" },
       { name: "Task" },
       { name: "Schedule" },
-      { name: "User" }
+      { name: "User" },
+      { name: "Section" }
     ],
     []
   );
@@ -114,6 +126,21 @@ export function HomePage() {
             });
             graphLinks.push({ source: companyId, target: projectId });
 
+            const projectUsers = await getProjectUsers(token, project.id).catch(() => []);
+            for (const role of projectUsers) {
+              const userId = `user-${role.id}`;
+              if (!userSet.has(userId)) {
+                userSet.add(userId);
+                graphNodes.push({
+                  id: userId,
+                  name: role.full_name,
+                  category: 4,
+                  symbolSize: 40
+                });
+              }
+              graphLinks.push({ source: projectId, target: userId, value: role.role });
+            }
+
             const [tasks, schedules] = await Promise.all([
               getTasksByProject(token, project.id).catch(() => []),
               getScheduleByProject(token, project.id).catch(() => [])
@@ -133,6 +160,24 @@ export function HomePage() {
               for (const role of taskRoles) {
                 const userId = `user-${role.id}`;
                 graphLinks.push({ source: userId, target: taskId, value: role.role });
+              }
+
+              const sections = await getTaskSections(token, task.id).catch(() => []);
+              for (const section of sections) {
+                const sectionId = `section-${section.id}`;
+                graphNodes.push({
+                  id: sectionId,
+                  name: section.title,
+                  category: 5,
+                  symbolSize: 36
+                });
+                graphLinks.push({ source: taskId, target: sectionId });
+
+                const sectionPerms = await getTaskSectionPermissions(token, task.id, section.id).catch(() => []);
+                for (const perm of sectionPerms) {
+                  const userId = `user-${perm.user_id}`;
+                  graphLinks.push({ source: userId, target: sectionId, value: perm.role });
+                }
               }
             }
 
@@ -176,19 +221,26 @@ export function HomePage() {
     if (!chartRef.current || !nodes.length) return;
 
     let disposed = false;
-    let chart: { setOption: (option: unknown) => void; resize: () => void; dispose: () => void } | null = null;
+    let chart: {
+      setOption: (option: unknown) => void;
+      resize: () => void;
+      dispose: () => void;
+      on: (eventName: string, handler: (params: unknown) => void) => void;
+      dispatchAction: (payload: unknown) => void;
+    } | null = null;
 
     const init = async () => {
       const echarts = await import("echarts");
       if (!chartRef.current || disposed) return;
 
-      chart = echarts.init(chartRef.current);
-      chartInstanceRef.current = chart as unknown as {
+      chart = echarts.init(chartRef.current) as unknown as {
         setOption: (option: unknown) => void;
         resize: () => void;
         dispose: () => void;
+        on: (eventName: string, handler: (params: unknown) => void) => void;
         dispatchAction: (payload: unknown) => void;
       };
+      chartInstanceRef.current = chart;
       chart.setOption({
         tooltip: {},
         legend: [
@@ -213,6 +265,7 @@ export function HomePage() {
             layout: "force",
             roam: true,
             draggable: true,
+            cursor: "pointer",
             data: nodes,
             links,
             categories,
@@ -255,6 +308,14 @@ export function HomePage() {
         ]
       });
 
+      chart.on("click", (params: unknown) => {
+        const payload = params as { dataType?: string; data?: { id?: string } };
+        if (payload.dataType !== "node" || !payload.data?.id) return;
+        const parsed = parseNodeId(payload.data.id);
+        if (!parsed) return;
+        router.push(`/nodes/${parsed.type}/${parsed.id}`);
+      });
+
       const onResize = () => chart?.resize();
       window.addEventListener("resize", onResize);
 
@@ -274,7 +335,7 @@ export function HomePage() {
       chart?.dispose();
       chartInstanceRef.current = null;
     };
-  }, [nodes, links, categories]);
+  }, [nodes, links, categories, router]);
 
   return (
     <main

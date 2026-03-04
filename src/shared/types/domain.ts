@@ -45,6 +45,7 @@ export type Task = {
   project_id: number;
   title: string;
   description: string | null;
+  value?: Array<Record<string, string>> | null;
   created_by: number;
 };
 
@@ -54,4 +55,24 @@ export type Schedule = {
   title: string;
   description: string | null;
   created_by: number;
+};
+
+export type TaskSection = {
+  id: number;
+  task_id: number;
+  key: string;
+  title: string;
+  content: Record<string, unknown> | null;
+  position: number;
+  version: number;
+  updated_by: number | null;
+};
+
+export type TaskSectionPermission = {
+  id: number;
+  task_section_id: number;
+  user_id: number;
+  role: "section_viewer" | "section_editor" | "section_manager";
+  email: string;
+  full_name: string;
 };

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   assignScheduleUserRole,
+  clearScheduleUserRoles,
   deleteSchedule,
   getProject,
   getScheduleByProject,
@@ -17,6 +18,7 @@ import { prepareUsersForDisplay } from "@/shared/lib/users/prepare-users-for-dis
 import type { Schedule, ScopedUserRole, User } from "@/shared/types/domain";
 
 const ROLE_OPTIONS = [
+  { value: "", label: "No role" },
   { value: "schedule_viewer", label: "Schedule Viewer" },
   { value: "schedule_member", label: "Schedule Member" },
   { value: "schedule_manager", label: "Schedule Manager" }
@@ -34,9 +36,7 @@ export function ScheduleSettingsPage() {
   const [companyUsers, setCompanyUsers] = useState<User[]>([]);
   const [scheduleRoles, setScheduleRoles] = useState<ScopedUserRole[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"schedule_viewer" | "schedule_member" | "schedule_manager">(
-    "schedule_viewer"
-  );
+  const [selectedRole, setSelectedRole] = useState<"" | "schedule_viewer" | "schedule_member" | "schedule_manager">("");
   const [error, setError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -95,7 +95,11 @@ export function ScheduleSettingsPage() {
     setAssigning(true);
     setError(null);
     try {
-      await assignScheduleUserRole(token, scheduleId, { user_id: userId, role: selectedRole });
+      if (!selectedRole) {
+        await clearScheduleUserRoles(token, scheduleId, userId);
+      } else {
+        await assignScheduleUserRole(token, scheduleId, { user_id: userId, role: selectedRole });
+      }
       const roles = await getScheduleUsers(token, scheduleId);
       setScheduleRoles(Array.isArray(roles) ? roles : []);
     } catch (err) {
@@ -146,12 +150,38 @@ export function ScheduleSettingsPage() {
             {displayScheduleRoles.length ? (
               <ul className="list">
                 {displayScheduleRoles.map((role) => (
-                  <li key={`${role.id}-${role.role}`}>
-                    <strong>{role.full_name}</strong> ({role.email}) -{" "}
-                    <span className="badge">{scheduleRoleLabel(role.role)}</span>
+                  <li
+                    key={`${role.id}-${role.role}`}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}
+                  >
                     <div>
-                      context: <span className="badge">{role.scope_type}</span> #{role.scope_id}
+                      <strong>{role.full_name}</strong> ({role.email}) -{" "}
+                      <span className="badge">{scheduleRoleLabel(role.role)}</span>
+                      <div>
+                        context: <span className="badge">{role.scope_type}</span> #{role.scope_id}
+                      </div>
                     </div>
+                    <button
+                      className="secondary"
+                      type="button"
+                      disabled={assigning}
+                      onClick={async () => {
+                        if (!token) return;
+                        setAssigning(true);
+                        setError(null);
+                        try {
+                          await clearScheduleUserRoles(token, scheduleId, role.id);
+                          const roles = await getScheduleUsers(token, scheduleId);
+                          setScheduleRoles(Array.isArray(roles) ? roles : []);
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : "Cannot remove schedule role");
+                        } finally {
+                          setAssigning(false);
+                        }
+                      }}
+                    >
+                      Remove role
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -174,7 +204,9 @@ export function ScheduleSettingsPage() {
               <select
                 value={selectedRole}
                 onChange={(e) =>
-                  setSelectedRole(e.target.value as "schedule_viewer" | "schedule_member" | "schedule_manager")
+                  setSelectedRole(
+                    e.target.value as "" | "schedule_viewer" | "schedule_member" | "schedule_manager"
+                  )
                 }
               >
                 {ROLE_OPTIONS.map((option) => (
@@ -184,7 +216,7 @@ export function ScheduleSettingsPage() {
                 ))}
               </select>
               <button className="primary" type="button" disabled={!selectedUserId || assigning} onClick={onAssignRole}>
-                {assigning ? "Assigning..." : "Assign role"}
+                {assigning ? "Applying..." : "Apply role"}
               </button>
             </div>
           </section>
@@ -200,3 +232,4 @@ export function ScheduleSettingsPage() {
     </main>
   );
 }
+
