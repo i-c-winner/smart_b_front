@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/shared/lib/auth/auth-context";
 
@@ -8,15 +9,17 @@ export function LogoutButton() {
   const { logout } = useAuth();
 
   return (
-    <button
-      className="secondary"
+    <Button
+      color="inherit"
+      variant="outlined"
       onClick={() => {
         logout();
         router.replace("/login");
       }}
       type="button"
+      size="small"
     >
       Logout
-    </button>
+    </Button>
   );
 }

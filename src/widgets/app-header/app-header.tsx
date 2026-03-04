@@ -1,5 +1,6 @@
 "use client";
 
+import { AppBar, Box, Button, Chip, Toolbar, Typography } from "@mui/material";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -145,32 +146,40 @@ export function AppHeader() {
   }, [token, currentUser, pathname]);
 
   return (
-    <header className="app-header">
-      <div className="app-header-inner">
-        <Link href="/" className="app-header-brand">
+    <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
+      <Toolbar sx={{ maxWidth: 1280, width: "100%", mx: "auto", px: { xs: 1.5, md: 3 }, gap: 1.5 }}>
+        <Typography
+          component={Link}
+          href="/"
+          variant="h6"
+          sx={{ textDecoration: "none", color: "text.primary", fontWeight: 700 }}
+        >
           SmartB
-        </Link>
-        <div className="app-header-right">
-          <Link href="/" className="secondary app-header-login">
+        </Typography>
+        <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+          <Button component={Link} href="/" variant="outlined" size="small" color="inherit">
             Home
-          </Link>
+          </Button>
           {showSettings && (
-            <Link href={settingsHref} className="secondary app-header-login">
+            <Button component={Link} href={settingsHref} variant="outlined" size="small" color="inherit">
               Settings
-            </Link>
+            </Button>
           )}
-          <span className="app-header-user">
-            {loading ? "Loading..." : currentUser ? currentUser.full_name : "Guest"}
-          </span>
+          <Chip
+            size="small"
+            color="default"
+            label={loading ? "Loading..." : currentUser ? currentUser.full_name : "Guest"}
+            variant="outlined"
+          />
           {token ? (
             <LogoutButton />
           ) : (
-            <Link href="/login" className="secondary app-header-login">
+            <Button component={Link} href="/login" variant="outlined" size="small" color="inherit">
               Login
-            </Link>
+            </Button>
           )}
-        </div>
-      </div>
-    </header>
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 }

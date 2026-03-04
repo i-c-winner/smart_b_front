@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert, Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import { FormEvent, useState } from "react";
 
 import { login, register } from "@/shared/api/auth-api";
@@ -33,35 +34,44 @@ export function LoginForm() {
   };
 
   return (
-    <form className="card" onSubmit={onSubmit}>
-      <h2>{mode === "login" ? "Login" : "Register"}</h2>
-      <label>
-        Email
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      </label>
-      {mode === "register" && (
-        <label>
-          Full name
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-        </label>
-      )}
-      <label>
-        Password
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      </label>
-      {error && <p className="error">{error}</p>}
-      <div style={{ display: "flex", gap: 8 }}>
-        <button className="primary" type="submit" disabled={loading}>
-          {loading ? "Please wait..." : mode === "login" ? "Login" : "Register and login"}
-        </button>
-        <button
-          className="secondary"
-          type="button"
-          onClick={() => setMode(mode === "login" ? "register" : "login")}
-        >
-          {mode === "login" ? "Need account" : "Have account"}
-        </button>
-      </div>
-    </form>
+    <Paper component="form" onSubmit={onSubmit} variant="outlined" sx={{ p: 3 }}>
+      <Stack spacing={2}>
+        <Typography variant="h5">{mode === "login" ? "Login" : "Register"}</Typography>
+        <TextField
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          fullWidth
+        />
+        {mode === "register" && (
+          <TextField
+            label="Full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            fullWidth
+          />
+        )}
+        <TextField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          fullWidth
+        />
+        {error && <Alert severity="error">{error}</Alert>}
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button variant="contained" type="submit" disabled={loading}>
+            {loading ? "Please wait..." : mode === "login" ? "Login" : "Register and login"}
+          </Button>
+          <Button variant="outlined" type="button" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+            {mode === "login" ? "Need account" : "Have account"}
+          </Button>
+        </Box>
+      </Stack>
+    </Paper>
   );
 }

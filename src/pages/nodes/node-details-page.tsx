@@ -1,5 +1,21 @@
 "use client";
 
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardActionArea,
+  CardContent,
+  CircularProgress,
+  Container,
+  Grid,
+  Link as MuiLink,
+  Paper,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -219,169 +235,199 @@ export function NodeDetailsPage() {
   const canSaveSection = Boolean(task) && sectionTextDraft !== savedSectionText && !savingSection;
 
   return (
-    <main>
-      <h1>Node</h1>
-      <p>
-        <Link href="/">Back to graph</Link>
-      </p>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="h4">Node</Typography>
+          <MuiLink component={Link} href="/" underline="hover">
+            Back to graph
+          </MuiLink>
+        </Box>
 
-      {(loading || dataLoading) && <div className="card">Loading node...</div>}
-      {error && <div className="card error">{error}</div>}
-      {!dataLoading && !error && !nodeType && <div className="card">Unsupported node type.</div>}
+        {(loading || dataLoading) && (
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <CircularProgress size={20} />
+            <Typography>Loading node...</Typography>
+          </Stack>
+        )}
+        {error && <Alert severity="error">{error}</Alert>}
+        {!dataLoading && !error && !nodeType && <Alert severity="warning">Unsupported node type.</Alert>}
 
-      {!dataLoading && !error && nodeType === "company" && company && (
-        <section className="card">
-          <h2>{company.name}</h2>
-          <p>Context: company</p>
-          <p>id: {company.id}</p>
-        </section>
-      )}
+        {!dataLoading && !error && nodeType === "company" && company && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6">{company.name}</Typography>
+            <Typography color="text.secondary">Context: company</Typography>
+            <Typography color="text.secondary">id: {company.id}</Typography>
+          </Paper>
+        )}
 
-      {!dataLoading && !error && nodeType === "project" && project && (
-        <>
-          <section className="card">
-            <h2>{project.name}</h2>
-            <p>Context: project</p>
-            <p>id: {project.id}</p>
-            <p>company: {company?.name ?? `#${project.company_id}`}</p>
-          </section>
+        {!dataLoading && !error && nodeType === "project" && project && (
+          <>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6">{project.name}</Typography>
+              <Typography color="text.secondary">Context: project</Typography>
+              <Typography color="text.secondary">id: {project.id}</Typography>
+              <Typography color="text.secondary">company: {company?.name ?? `#${project.company_id}`}</Typography>
+            </Paper>
 
-          <section className="card">
-            <h2>Child Context</h2>
-            <div className="grid">
-              <div>
-                <h3>Tasks</h3>
-                {projectTasks.length ? (
-                  <ul className="projects-grid">
-                    {projectTasks.map((item) => (
-                      <li key={item.id}>
-                        <Link href={`/nodes/task/${item.id}`} className="project-card-link">
-                          <strong>{item.title}</strong>
-                          <div>{item.description || "No description"}</div>
-                          <small>id: {item.id}</small>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No tasks.</p>
-                )}
-              </div>
-              <div>
-                <h3>Schedules</h3>
-                {projectSchedules.length ? (
-                  <ul className="projects-grid">
-                    {projectSchedules.map((item) => (
-                      <li key={item.id}>
-                        <Link href={`/nodes/schedule/${item.id}`} className="project-card-link">
-                          <strong>{item.title}</strong>
-                          <div>{item.description || "No description"}</div>
-                          <small>id: {item.id}</small>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No schedules.</p>
-                )}
-              </div>
-            </div>
-          </section>
-        </>
-      )}
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Child Context
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                    Tasks
+                  </Typography>
+                  {projectTasks.length ? (
+                    <Stack spacing={1}>
+                      {projectTasks.map((item) => (
+                        <Card key={item.id} variant="outlined">
+                          <CardActionArea component={Link} href={`/nodes/task/${item.id}`}>
+                            <CardContent>
+                              <Typography fontWeight={700}>{item.title}</Typography>
+                              <Typography color="text.secondary">{item.description || "No description"}</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                id: {item.id}
+                              </Typography>
+                            </CardContent>
+                          </CardActionArea>
+                        </Card>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography color="text.secondary">No tasks.</Typography>
+                  )}
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                    Schedules
+                  </Typography>
+                  {projectSchedules.length ? (
+                    <Stack spacing={1}>
+                      {projectSchedules.map((item) => (
+                        <Card key={item.id} variant="outlined">
+                          <CardActionArea component={Link} href={`/nodes/schedule/${item.id}`}>
+                            <CardContent>
+                              <Typography fontWeight={700}>{item.title}</Typography>
+                              <Typography color="text.secondary">{item.description || "No description"}</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                id: {item.id}
+                              </Typography>
+                            </CardContent>
+                          </CardActionArea>
+                        </Card>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography color="text.secondary">No schedules.</Typography>
+                  )}
+                </Grid>
+              </Grid>
+            </Paper>
+          </>
+        )}
 
-      {!dataLoading && !error && nodeType === "task" && task && (
-        <>
-          <section className="card">
-            <h2>{task.title}</h2>
-            <p>{task.description || "No description"}</p>
-            <p>Context: task</p>
-            <p>id: {task.id}</p>
-            <p>project: {project?.name ?? `#${task.project_id}`}</p>
-            <p>company: {company?.name ?? "-"}</p>
-          </section>
+        {!dataLoading && !error && nodeType === "task" && task && (
+          <>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6">{task.title}</Typography>
+              <Typography color="text.secondary">{task.description || "No description"}</Typography>
+              <Typography color="text.secondary">Context: task</Typography>
+              <Typography color="text.secondary">id: {task.id}</Typography>
+              <Typography color="text.secondary">project: {project?.name ?? `#${task.project_id}`}</Typography>
+              <Typography color="text.secondary">company: {company?.name ?? "-"}</Typography>
+            </Paper>
 
-          <section className="card">
-            <h2>Document</h2>
-            {taskSections.length ? (
-              <ul className="list">
-                {taskSections.map((item) => {
-                  const text =
-                    item.content && typeof item.content === "object" && !Array.isArray(item.content)
-                      ? typeof item.content.text === "string"
-                        ? item.content.text
-                        : ""
-                      : "";
-                  return (
-                    <li key={item.id}>
-                      <div>
-                        <strong>{item.title}</strong> <span className="badge">{item.key}</span>
-                      </div>
-                      <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>{text || "No content"}</div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p>No document sections.</p>
-            )}
-          </section>
-        </>
-      )}
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Document
+              </Typography>
+              {taskSections.length ? (
+                <Stack spacing={1}>
+                  {taskSections.map((item) => {
+                    const text =
+                      item.content && typeof item.content === "object" && !Array.isArray(item.content)
+                        ? typeof item.content.text === "string"
+                          ? item.content.text
+                          : ""
+                        : "";
+                    return (
+                      <Card key={item.id} variant="outlined">
+                        <CardActionArea component={Link} href={`/nodes/section/${item.id}`}>
+                          <CardContent>
+                            <Typography fontWeight={700}>
+                              {item.title}{" "}
+                              <Typography component="span" variant="body2" color="text.secondary">
+                                ({item.key})
+                              </Typography>
+                            </Typography>
+                            <Typography sx={{ whiteSpace: "pre-wrap", mt: 0.5 }}>{text || "No content"}</Typography>
+                          </CardContent>
+                        </CardActionArea>
+                      </Card>
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Typography color="text.secondary">No document sections.</Typography>
+              )}
+            </Paper>
+          </>
+        )}
 
-      {!dataLoading && !error && nodeType === "schedule" && schedule && (
-        <section className="card">
-          <h2>{schedule.title}</h2>
-          <p>{schedule.description || "No description"}</p>
-          <p>Context: schedule</p>
-          <p>id: {schedule.id}</p>
-          <p>project: {project?.name ?? `#${schedule.project_id}`}</p>
-          <p>company: {company?.name ?? "-"}</p>
-        </section>
-      )}
+        {!dataLoading && !error && nodeType === "schedule" && schedule && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6">{schedule.title}</Typography>
+            <Typography color="text.secondary">{schedule.description || "No description"}</Typography>
+            <Typography color="text.secondary">Context: schedule</Typography>
+            <Typography color="text.secondary">id: {schedule.id}</Typography>
+            <Typography color="text.secondary">project: {project?.name ?? `#${schedule.project_id}`}</Typography>
+            <Typography color="text.secondary">company: {company?.name ?? "-"}</Typography>
+          </Paper>
+        )}
 
-      {!dataLoading && !error && nodeType === "section" && section && (
-        <section className="card">
-          <h2>{section.title}</h2>
-          <p>Context: section</p>
-          <p>id: {section.id}</p>
-          <p>key: {section.key}</p>
-          <p>task: {task?.title ?? `#${section.task_id}`}</p>
-          <p>project: {project?.name ?? "-"}</p>
-          <p>company: {company?.name ?? "-"}</p>
-          <label>
-            Section content
-            <textarea
+        {!dataLoading && !error && nodeType === "section" && section && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6">{section.title}</Typography>
+            <Typography color="text.secondary">Context: section</Typography>
+            <Typography color="text.secondary">id: {section.id}</Typography>
+            <Typography color="text.secondary">key: {section.key}</Typography>
+            <Typography color="text.secondary">task: {task?.title ?? `#${section.task_id}`}</Typography>
+            <Typography color="text.secondary">project: {project?.name ?? "-"}</Typography>
+            <Typography color="text.secondary">company: {company?.name ?? "-"}</Typography>
+            <TextField
+              label="Section content"
               value={sectionTextDraft}
               onChange={(e) => setSectionTextDraft(e.target.value)}
-              rows={10}
-              style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}
+              minRows={8}
+              multiline
+              fullWidth
+              sx={{ mt: 1.5 }}
             />
-          </label>
-          <p style={{ marginTop: 8 }}>
-            <button className="primary" type="button" onClick={onSaveSection} disabled={!canSaveSection}>
+            <Button variant="contained" sx={{ mt: 1.5 }} onClick={onSaveSection} disabled={!canSaveSection}>
               {savingSection ? "Saving..." : "Save section"}
-            </button>
-          </p>
-        </section>
-      )}
+            </Button>
+          </Paper>
+        )}
 
-      {!dataLoading && !error && nodeType === "user" && user && (
-        <section className="card">
-          <h2>{user.full_name}</h2>
-          <p>{user.email}</p>
-          <p>id: {user.id}</p>
-        </section>
-      )}
+        {!dataLoading && !error && nodeType === "user" && user && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6">{user.full_name}</Typography>
+            <Typography color="text.secondary">{user.email}</Typography>
+            <Typography color="text.secondary">id: {user.id}</Typography>
+          </Paper>
+        )}
 
-      {!dataLoading &&
-        !error &&
-        ((nodeType === "company" && !company) ||
-          (nodeType === "project" && !project) ||
-          (nodeType === "task" && !task) ||
-          (nodeType === "schedule" && !schedule) ||
-          (nodeType === "section" && !section) ||
-          (nodeType === "user" && !user)) && <section className="card">Node not found.</section>}
-    </main>
+        {!dataLoading &&
+          !error &&
+          ((nodeType === "company" && !company) ||
+            (nodeType === "project" && !project) ||
+            (nodeType === "task" && !task) ||
+            (nodeType === "schedule" && !schedule) ||
+            (nodeType === "section" && !section) ||
+            (nodeType === "user" && !user)) && <Alert severity="warning">Node not found.</Alert>}
+      </Stack>
+    </Container>
   );
 }

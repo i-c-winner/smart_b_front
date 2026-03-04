@@ -1,5 +1,25 @@
 "use client";
 
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardActionArea,
+  CardContent,
+  CircularProgress,
+  Container,
+  FormControl,
+  Grid,
+  InputLabel,
+  Link as MuiLink,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -186,174 +206,202 @@ export function ProjectSettingsPage() {
   };
 
   return (
-    <main>
-      <h1>Project Settings: {projectParam}</h1>
-      <p>
-        <Link href="/settings">Back to settings</Link>
-      </p>
-      {(loading || dataLoading) && <div className="card">Loading project data...</div>}
-      {error && <div className="card error">{error}</div>}
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="h4">Project Settings: {projectParam}</Typography>
+          <MuiLink component={Link} href="/settings" underline="hover">
+            Back to settings
+          </MuiLink>
+        </Box>
 
-      {!dataLoading && !error && (
-        <>
-          <section className="card">
-            <h2>Project Managers</h2>
-            {projectManagers.length ? (
-              <ul className="list">
-                {projectManagers.map((manager) => (
-                  <li
-                    key={manager.id}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}
-                  >
-                    <div>
-                      <strong>{manager.full_name}</strong> ({manager.email})
-                    </div>
-                    <button
-                      className="secondary"
-                      type="button"
-                      onClick={() => onRemoveManager(manager.id)}
-                      disabled={removingManagerId === manager.id}
+        {(loading || dataLoading) && (
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <CircularProgress size={20} />
+            <Typography>Loading project data...</Typography>
+          </Stack>
+        )}
+        {error && <Alert severity="error">{error}</Alert>}
+
+        {!dataLoading && !error && (
+          <>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Project Managers
+              </Typography>
+              {projectManagers.length ? (
+                <Stack spacing={1}>
+                  {projectManagers.map((manager) => (
+                    <Paper
+                      key={manager.id}
+                      variant="outlined"
+                      sx={{ p: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1.5 }}
                     >
-                      {removingManagerId === manager.id ? "Removing..." : "Remove role"}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No project managers.</p>
-            )}
-          </section>
-
-          <section className="card">
-            <h2>Task</h2>
-            {tasks.length > 0 ? (
-              <ul className="projects-grid">
-                {tasks.map((task) => (
-                  <li key={task.id}>
-                    <div className="project-card-link" style={{ cursor: "default" }}>
-                      <Link href={`/settings/projects/${projectId}/tasks/${task.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-                        <strong>{task.title}</strong>
-                        <div>{task.description || "No description"}</div>
-                        <small>id: {task.id}</small>
-                      </Link>
-                      <div className="project-admin-row" style={{ marginTop: 10 }}>
-                        <select
-                          value={selectedTaskManagerByTask[task.id] ?? ""}
-                          onChange={(e) =>
-                            setSelectedTaskManagerByTask((prev) => ({
-                              ...prev,
-                              [task.id]: e.target.value
-                            }))
-                          }
-                        >
-                          <option value="">Select company user</option>
-                          {displayCompanyUsers.map((user) => (
-                            <option key={user.id} value={String(user.id)}>
-                              {user.full_name}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          className="secondary"
-                          type="button"
-                          disabled={!selectedTaskManagerByTask[task.id] || assigningContextKey === `task-${task.id}`}
-                          onClick={() => onAssignTaskManager(task.id)}
-                        >
-                          {assigningContextKey === `task-${task.id}` ? "Assigning..." : "Assign task manager"}
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No tasks yet.</p>
-            )}
-            <form onSubmit={onCreateTask}>
-              <label>
-                Title
-                <input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} required />
-              </label>
-              <label>
-                Description
-                <input value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} />
-              </label>
-              <button className="primary" type="submit" disabled={submittingTask}>
-                {submittingTask ? "Creating..." : "Add task"}
-              </button>
-            </form>
-          </section>
-
-          <section className="card">
-            <h2>Schedule</h2>
-            {schedules.length > 0 ? (
-              <ul className="projects-grid">
-                {schedules.map((schedule) => (
-                  <li key={schedule.id}>
-                    <div className="project-card-link" style={{ cursor: "default" }}>
-                      <Link
-                        href={`/settings/projects/${projectId}/schedules/${schedule.id}`}
-                        style={{ textDecoration: "none", color: "inherit", display: "block" }}
+                      <Typography>
+                        <strong>{manager.full_name}</strong> ({manager.email})
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        onClick={() => onRemoveManager(manager.id)}
+                        disabled={removingManagerId === manager.id}
                       >
-                        <strong>{schedule.title}</strong>
-                        <div>{schedule.description || "No description"}</div>
-                        <small>id: {schedule.id}</small>
-                      </Link>
-                      <div className="project-admin-row" style={{ marginTop: 10 }}>
-                        <select
-                          value={selectedScheduleManagerBySchedule[schedule.id] ?? ""}
-                          onChange={(e) =>
-                            setSelectedScheduleManagerBySchedule((prev) => ({
-                              ...prev,
-                              [schedule.id]: e.target.value
-                            }))
-                          }
-                        >
-                          <option value="">Select company user</option>
-                          {displayCompanyUsers.map((user) => (
-                            <option key={user.id} value={String(user.id)}>
-                              {user.full_name}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          className="secondary"
-                          type="button"
-                          disabled={
-                            !selectedScheduleManagerBySchedule[schedule.id] ||
-                            assigningContextKey === `schedule-${schedule.id}`
-                          }
-                          onClick={() => onAssignScheduleManager(schedule.id)}
-                        >
-                          {assigningContextKey === `schedule-${schedule.id}`
-                            ? "Assigning..."
-                            : "Assign schedule manager"}
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No schedules yet.</p>
-            )}
-            <form onSubmit={onCreateSchedule}>
-              <label>
-                Title
-                <input value={scheduleTitle} onChange={(e) => setScheduleTitle(e.target.value)} required />
-              </label>
-              <label>
-                Description
-                <input value={scheduleDescription} onChange={(e) => setScheduleDescription(e.target.value)} />
-              </label>
-              <button className="primary" type="submit" disabled={submittingSchedule}>
-                {submittingSchedule ? "Creating..." : "Add schedule"}
-              </button>
-            </form>
-          </section>
-        </>
-      )}
-    </main>
+                        {removingManagerId === manager.id ? "Removing..." : "Remove role"}
+                      </Button>
+                    </Paper>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography color="text.secondary">No project managers.</Typography>
+              )}
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Task
+              </Typography>
+              {tasks.length > 0 ? (
+                <Grid container spacing={1.5} sx={{ mb: 2 }}>
+                  {tasks.map((task) => (
+                    <Grid size={{ xs: 12, md: 6 }} key={task.id}>
+                      <Card variant="outlined">
+                        <CardActionArea component={Link} href={`/settings/projects/${projectId}/tasks/${task.id}`}>
+                          <CardContent>
+                            <Typography variant="subtitle1" fontWeight={700}>
+                              {task.title}
+                            </Typography>
+                            <Typography color="text.secondary">{task.description || "No description"}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              id: {task.id}
+                            </Typography>
+                          </CardContent>
+                        </CardActionArea>
+                        <Box sx={{ p: 1.5, pt: 0 }}>
+                          <Stack direction="row" spacing={1}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Select company user</InputLabel>
+                              <Select
+                                label="Select company user"
+                                value={selectedTaskManagerByTask[task.id] ?? ""}
+                                onChange={(e) =>
+                                  setSelectedTaskManagerByTask((prev) => ({
+                                    ...prev,
+                                    [task.id]: String(e.target.value)
+                                  }))
+                                }
+                              >
+                                <MenuItem value="">Select company user</MenuItem>
+                                {displayCompanyUsers.map((user) => (
+                                  <MenuItem key={user.id} value={String(user.id)}>
+                                    {user.full_name}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <Button
+                              variant="outlined"
+                              disabled={!selectedTaskManagerByTask[task.id] || assigningContextKey === `task-${task.id}`}
+                              onClick={() => onAssignTaskManager(task.id)}
+                            >
+                              {assigningContextKey === `task-${task.id}` ? "Assigning..." : "Assign task manager"}
+                            </Button>
+                          </Stack>
+                        </Box>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  No tasks yet.
+                </Typography>
+              )}
+              <Stack component="form" spacing={1.5} onSubmit={onCreateTask}>
+                <TextField label="Title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} required />
+                <TextField label="Description" value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} />
+                <Button variant="contained" type="submit" disabled={submittingTask}>
+                  {submittingTask ? "Creating..." : "Add task"}
+                </Button>
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Schedule
+              </Typography>
+              {schedules.length > 0 ? (
+                <Grid container spacing={1.5} sx={{ mb: 2 }}>
+                  {schedules.map((schedule) => (
+                    <Grid size={{ xs: 12, md: 6 }} key={schedule.id}>
+                      <Card variant="outlined">
+                        <CardActionArea component={Link} href={`/settings/projects/${projectId}/schedules/${schedule.id}`}>
+                          <CardContent>
+                            <Typography variant="subtitle1" fontWeight={700}>
+                              {schedule.title}
+                            </Typography>
+                            <Typography color="text.secondary">{schedule.description || "No description"}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              id: {schedule.id}
+                            </Typography>
+                          </CardContent>
+                        </CardActionArea>
+                        <Box sx={{ p: 1.5, pt: 0 }}>
+                          <Stack direction="row" spacing={1}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Select company user</InputLabel>
+                              <Select
+                                label="Select company user"
+                                value={selectedScheduleManagerBySchedule[schedule.id] ?? ""}
+                                onChange={(e) =>
+                                  setSelectedScheduleManagerBySchedule((prev) => ({
+                                    ...prev,
+                                    [schedule.id]: String(e.target.value)
+                                  }))
+                                }
+                              >
+                                <MenuItem value="">Select company user</MenuItem>
+                                {displayCompanyUsers.map((user) => (
+                                  <MenuItem key={user.id} value={String(user.id)}>
+                                    {user.full_name}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <Button
+                              variant="outlined"
+                              disabled={
+                                !selectedScheduleManagerBySchedule[schedule.id] ||
+                                assigningContextKey === `schedule-${schedule.id}`
+                              }
+                              onClick={() => onAssignScheduleManager(schedule.id)}
+                            >
+                              {assigningContextKey === `schedule-${schedule.id}` ? "Assigning..." : "Assign schedule manager"}
+                            </Button>
+                          </Stack>
+                        </Box>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  No schedules yet.
+                </Typography>
+              )}
+              <Stack component="form" spacing={1.5} onSubmit={onCreateSchedule}>
+                <TextField label="Title" value={scheduleTitle} onChange={(e) => setScheduleTitle(e.target.value)} required />
+                <TextField
+                  label="Description"
+                  value={scheduleDescription}
+                  onChange={(e) => setScheduleDescription(e.target.value)}
+                />
+                <Button variant="contained" type="submit" disabled={submittingSchedule}>
+                  {submittingSchedule ? "Creating..." : "Add schedule"}
+                </Button>
+              </Stack>
+            </Paper>
+          </>
+        )}
+      </Stack>
+    </Container>
   );
 }
-

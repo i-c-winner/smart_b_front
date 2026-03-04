@@ -1,5 +1,20 @@
 "use client";
 
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  FormControl,
+  InputLabel,
+  Link as MuiLink,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Typography
+} from "@mui/material";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -123,113 +138,133 @@ export function ScheduleSettingsPage() {
   };
 
   return (
-    <main>
-      <h1>Schedule Settings: {scheduleParam}</h1>
-      <p>
-        <Link href={`/settings/projects/${projectId}`}>Back to project</Link>
-      </p>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="h4">Schedule Settings: {scheduleParam}</Typography>
+          <MuiLink component={Link} href={`/settings/projects/${projectId}`} underline="hover">
+            Back to project
+          </MuiLink>
+        </Box>
 
-      {(loading || dataLoading) && <div className="card">Loading schedule settings...</div>}
-      {error && <div className="card error">{error}</div>}
+        {(loading || dataLoading) && (
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <CircularProgress size={20} />
+            <Typography>Loading schedule settings...</Typography>
+          </Stack>
+        )}
+        {error && <Alert severity="error">{error}</Alert>}
 
-      {!dataLoading && !error && !schedule && <div className="card">Schedule not found in this project.</div>}
+        {!dataLoading && !error && !schedule && <Alert severity="warning">Schedule not found in this project.</Alert>}
 
-      {!dataLoading && !error && schedule && (
-        <>
-          <section className="card">
-            <h2>Schedule</h2>
-            <div>
-              <strong>{schedule.title}</strong>
-            </div>
-            <div>{schedule.description || "No description"}</div>
-            <small>id: {schedule.id}</small>
-          </section>
+        {!dataLoading && !error && schedule && (
+          <>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6">Schedule</Typography>
+              <Typography fontWeight={700}>{schedule.title}</Typography>
+              <Typography color="text.secondary">{schedule.description || "No description"}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                id: {schedule.id}
+              </Typography>
+            </Paper>
 
-          <section className="card">
-            <h2>Assigned Roles</h2>
-            {displayScheduleRoles.length ? (
-              <ul className="list">
-                {displayScheduleRoles.map((role) => (
-                  <li
-                    key={`${role.id}-${role.role}`}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}
-                  >
-                    <div>
-                      <strong>{role.full_name}</strong> ({role.email}) -{" "}
-                      <span className="badge">{scheduleRoleLabel(role.role)}</span>
-                      <div>
-                        context: <span className="badge">{role.scope_type}</span> #{role.scope_id}
-                      </div>
-                    </div>
-                    <button
-                      className="secondary"
-                      type="button"
-                      disabled={assigning}
-                      onClick={async () => {
-                        if (!token) return;
-                        setAssigning(true);
-                        setError(null);
-                        try {
-                          await clearScheduleUserRoles(token, scheduleId, role.id);
-                          const roles = await getScheduleUsers(token, scheduleId);
-                          setScheduleRoles(Array.isArray(roles) ? roles : []);
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : "Cannot remove schedule role");
-                        } finally {
-                          setAssigning(false);
-                        }
-                      }}
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Assigned Roles
+              </Typography>
+              {displayScheduleRoles.length ? (
+                <Stack spacing={1}>
+                  {displayScheduleRoles.map((role) => (
+                    <Paper
+                      key={`${role.id}-${role.role}`}
+                      variant="outlined"
+                      sx={{ p: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1.5 }}
                     >
-                      Remove role
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No role assignments in schedule context.</p>
-            )}
-          </section>
+                      <Box>
+                        <Typography>
+                          <strong>{role.full_name}</strong> ({role.email}) - {scheduleRoleLabel(role.role)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          context: {role.scope_type} #{role.scope_id}
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        disabled={assigning}
+                        onClick={async () => {
+                          if (!token) return;
+                          setAssigning(true);
+                          setError(null);
+                          try {
+                            await clearScheduleUserRoles(token, scheduleId, role.id);
+                            const roles = await getScheduleUsers(token, scheduleId);
+                            setScheduleRoles(Array.isArray(roles) ? roles : []);
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : "Cannot remove schedule role");
+                          } finally {
+                            setAssigning(false);
+                          }
+                        }}
+                      >
+                        Remove role
+                      </Button>
+                    </Paper>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography color="text.secondary">No role assignments in schedule context.</Typography>
+              )}
+            </Paper>
 
-          <section className="card">
-            <h2>Assign User Role</h2>
-            <div className="project-admin-row">
-              <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
-                <option value="">Select company user</option>
-                {displayCompanyUsers.map((user) => (
-                  <option key={user.id} value={String(user.id)}>
-                    {user.full_name} ({user.email})
-                  </option>
-                ))}
-              </select>
-              <select
-                value={selectedRole}
-                onChange={(e) =>
-                  setSelectedRole(
-                    e.target.value as "" | "schedule_viewer" | "schedule_member" | "schedule_manager"
-                  )
-                }
-              >
-                {ROLE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <button className="primary" type="button" disabled={!selectedUserId || assigning} onClick={onAssignRole}>
-                {assigning ? "Applying..." : "Apply role"}
-              </button>
-            </div>
-          </section>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Assign User Role
+              </Typography>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                <FormControl fullWidth>
+                  <InputLabel>Select company user</InputLabel>
+                  <Select value={selectedUserId} label="Select company user" onChange={(e) => setSelectedUserId(String(e.target.value))}>
+                    <MenuItem value="">Select company user</MenuItem>
+                    {displayCompanyUsers.map((user) => (
+                      <MenuItem key={user.id} value={String(user.id)}>
+                        {user.full_name} ({user.email})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth>
+                  <InputLabel>Role</InputLabel>
+                  <Select
+                    value={selectedRole}
+                    label="Role"
+                    onChange={(e) =>
+                      setSelectedRole(e.target.value as "" | "schedule_viewer" | "schedule_member" | "schedule_manager")
+                    }
+                  >
+                    {ROLE_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button variant="contained" disabled={!selectedUserId || assigning} onClick={onAssignRole}>
+                  {assigning ? "Applying..." : "Apply role"}
+                </Button>
+              </Stack>
+            </Paper>
 
-          <section className="card">
-            <h2>Danger Zone</h2>
-            <button className="secondary" type="button" onClick={onDelete} disabled={deleting}>
-              {deleting ? "Deleting..." : "Delete schedule"}
-            </button>
-          </section>
-        </>
-      )}
-    </main>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Danger Zone
+              </Typography>
+              <Button variant="outlined" color="error" onClick={onDelete} disabled={deleting}>
+                {deleting ? "Deleting..." : "Delete schedule"}
+              </Button>
+            </Paper>
+          </>
+        )}
+      </Stack>
+    </Container>
   );
 }
-

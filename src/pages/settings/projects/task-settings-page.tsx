@@ -1,5 +1,21 @@
 "use client";
 
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  FormControl,
+  InputLabel,
+  Link as MuiLink,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -9,14 +25,14 @@ import {
   clearTaskSectionPermission,
   clearTaskUserRoles,
   createTaskSection,
-  deleteTaskSection,
   deleteTask,
+  deleteTaskSection,
   getProject,
   getTaskSectionPermissions,
   getTaskSections,
-  getTaskUsers,
   getTasksByProject,
-  getUsers,
+  getTaskUsers,
+  getUsers
 } from "@/shared/api/domain-api";
 import { useAuth } from "@/shared/lib/auth/auth-context";
 import { prepareUsersForDisplay } from "@/shared/lib/users/prepare-users-for-display";
@@ -199,205 +215,215 @@ export function TaskSettingsPage() {
   };
 
   return (
-    <main>
-      <h1>Task Settings: {taskParam}</h1>
-      <p>
-        <Link href={`/settings/projects/${projectId}`}>Back to project</Link>
-      </p>
-      <p>
-        <button className="secondary" type="button" onClick={() => setShowTaskValueForm((prev) => !prev)}>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="h4">Task Settings: {taskParam}</Typography>
+          <MuiLink component={Link} href={`/settings/projects/${projectId}`} underline="hover">
+            Back to project
+          </MuiLink>
+        </Box>
+
+        <Button variant="outlined" onClick={() => setShowTaskValueForm((prev) => !prev)} sx={{ alignSelf: "flex-start" }}>
           Настройка задания
-        </button>
-      </p>
+        </Button>
 
-      {(loading || dataLoading) && <div className="card">Loading task settings...</div>}
-      {error && <div className="card error">{error}</div>}
+        {(loading || dataLoading) && (
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <CircularProgress size={20} />
+            <Typography>Loading task settings...</Typography>
+          </Stack>
+        )}
+        {error && <Alert severity="error">{error}</Alert>}
+        {!dataLoading && !error && !task && <Alert severity="warning">Task not found in this project.</Alert>}
 
-      {!dataLoading && !error && !task && <div className="card">Task not found in this project.</div>}
+        {!dataLoading && !error && task && (
+          <>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6">Task</Typography>
+              <Typography fontWeight={700}>{task.title}</Typography>
+              <Typography color="text.secondary">{task.description || "No description"}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                id: {task.id}
+              </Typography>
+            </Paper>
 
-      {!dataLoading && !error && task && (
-        <>
-          <section className="card">
-            <h2>Task</h2>
-            <div>
-              <strong>{task.title}</strong>
-            </div>
-            <div>{task.description || "No description"}</div>
-            <small>id: {task.id}</small>
-          </section>
-
-          {showTaskValueForm && (
-            <section className="card">
-              <h2>Документ: разделы</h2>
-              <div className="grid" style={{ marginBottom: 12 }}>
-                <label>
-                  Section key
-                  <input value={newSectionKey} onChange={(e) => setNewSectionKey(e.target.value)} />
-                </label>
-                <label>
-                  Section title
-                  <input value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} />
-                </label>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  className="secondary"
-                  type="button"
+            {showTaskValueForm && (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  Документ: разделы
+                </Typography>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ mb: 1.5 }}>
+                  <TextField label="Section key" value={newSectionKey} onChange={(e) => setNewSectionKey(e.target.value)} fullWidth />
+                  <TextField label="Section title" value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} fullWidth />
+                </Stack>
+                <Button
+                  variant="outlined"
                   onClick={onCreateSection}
                   disabled={creatingSection || !newSectionKey.trim() || !newSectionTitle.trim()}
                 >
                   {creatingSection ? "Creating..." : "Add section"}
-                </button>
-              </div>
+                </Button>
 
-              <hr style={{ margin: "16px 0", border: 0, borderTop: "1px solid var(--border)" }} />
+                <Box sx={{ my: 2, borderTop: "1px solid", borderColor: "divider" }} />
 
-              <label>
-                Section
-                <select value={selectedSectionId} onChange={(e) => setSelectedSectionId(e.target.value)}>
-                  <option value="">Select section</option>
-                  {sections.map((section) => (
-                    <option key={section.id} value={String(section.id)}>
-                      {section.title} ({section.key})
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <FormControl fullWidth>
+                  <InputLabel>Section</InputLabel>
+                  <Select value={selectedSectionId} label="Section" onChange={(e) => setSelectedSectionId(String(e.target.value))}>
+                    <MenuItem value="">Select section</MenuItem>
+                    {sections.map((section) => (
+                      <MenuItem key={section.id} value={String(section.id)}>
+                        {section.title} ({section.key})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
-              {selectedSectionId && (
-                <>
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button className="secondary" type="button" onClick={onDeleteSection} disabled={savingSection}>
-                      Delete section
-                    </button>
-                  </div>
+                {selectedSectionId && (
+                  <>
+                    <Box sx={{ mt: 1.5 }}>
+                      <Button variant="outlined" color="error" onClick={onDeleteSection} disabled={savingSection}>
+                        Delete section
+                      </Button>
+                    </Box>
 
-                  <h3 style={{ marginTop: 16 }}>Section permissions</h3>
-                  {sectionPermissions.length ? (
-                    <ul className="list">
-                      {sectionPermissions.map((perm) => (
-                        <li
-                          key={perm.id}
-                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}
-                        >
-                          <div>
-                            <strong>{perm.full_name}</strong> ({perm.email}) - <span className="badge">{perm.role}</span>
-                          </div>
-                          <button
-                            className="secondary"
-                            type="button"
-                            disabled={savingSection}
-                            onClick={async () => {
-                              if (!token) return;
-                              setSavingSection(true);
-                              setError(null);
-                              try {
-                                await clearTaskSectionPermission(token, taskId, Number(selectedSectionId), perm.user_id);
-                                const perms = await getTaskSectionPermissions(token, taskId, Number(selectedSectionId));
-                                setSectionPermissions(Array.isArray(perms) ? perms : []);
-                              } catch (err) {
-                                setError(err instanceof Error ? err.message : "Cannot remove section permission");
-                              } finally {
-                                setSavingSection(false);
-                              }
-                            }}
+                    <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+                      Section permissions
+                    </Typography>
+                    {sectionPermissions.length ? (
+                      <Stack spacing={1}>
+                        {sectionPermissions.map((perm) => (
+                          <Paper
+                            key={perm.id}
+                            variant="outlined"
+                            sx={{ p: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1 }}
                           >
-                            Remove
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No permissions yet.</p>
-                  )}
+                            <Typography>
+                              <strong>{perm.full_name}</strong> ({perm.email}) - {perm.role}
+                            </Typography>
+                            <Button
+                              variant="outlined"
+                              disabled={savingSection}
+                              onClick={async () => {
+                                if (!token) return;
+                                setSavingSection(true);
+                                setError(null);
+                                try {
+                                  await clearTaskSectionPermission(token, taskId, Number(selectedSectionId), perm.user_id);
+                                  const perms = await getTaskSectionPermissions(token, taskId, Number(selectedSectionId));
+                                  setSectionPermissions(Array.isArray(perms) ? perms : []);
+                                } catch (err) {
+                                  setError(err instanceof Error ? err.message : "Cannot remove section permission");
+                                } finally {
+                                  setSavingSection(false);
+                                }
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography color="text.secondary">No permissions yet.</Typography>
+                    )}
 
-                  <div className="project-admin-row" style={{ marginTop: 8 }}>
-                    <select value={selectedPermUserId} onChange={(e) => setSelectedPermUserId(e.target.value)}>
-                      <option value="">Select user</option>
-                      {displayCompanyUsers.map((user) => (
-                        <option key={user.id} value={String(user.id)}>
-                          {user.full_name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={selectedPermRole}
-                      onChange={(e) =>
-                        setSelectedPermRole(e.target.value as "section_viewer" | "section_editor" | "section_manager")
-                      }
-                    >
-                      {SECTION_ROLE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="primary"
-                      type="button"
-                      disabled={!selectedPermUserId || savingSection}
-                      onClick={onAssignSectionPermission}
-                    >
-                      Assign
-                    </button>
-                  </div>
-                </>
-              )}
-            </section>
-          )}
-          <section className="card">
-            <h2>Assigned Roles</h2>
-            {displayTaskRoles.length ? (
-              <ul className="list">
-                {displayTaskRoles.map((role) => (
-                  <li
-                    key={`${role.id}-${role.role}`}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}
-                  >
-                    <div>
-                      <strong>{role.full_name}</strong> ({role.email}) -{" "}
-                      <span className="badge">{taskRoleLabel(role.role)}</span>
-                      <div>
-                        context: <span className="badge">{role.scope_type}</span> #{role.scope_id}
-                      </div>
-                    </div>
-                    <button
-                      className="secondary"
-                      type="button"
-                      disabled={assigning}
-                      onClick={async () => {
-                        if (!token) return;
-                        setAssigning(true);
-                        setError(null);
-                        try {
-                          await clearTaskUserRoles(token, taskId, role.id);
-                          const roles = await getTaskUsers(token, taskId);
-                          setTaskRoles(Array.isArray(roles) ? roles : []);
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : "Cannot remove task role");
-                        } finally {
-                          setAssigning(false);
-                        }
-                      }}
-                    >
-                      Remove role
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No role assignments in task context.</p>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1.5 }}>
+                      <FormControl fullWidth>
+                        <InputLabel>Select user</InputLabel>
+                        <Select value={selectedPermUserId} label="Select user" onChange={(e) => setSelectedPermUserId(String(e.target.value))}>
+                          <MenuItem value="">Select user</MenuItem>
+                          {displayCompanyUsers.map((user) => (
+                            <MenuItem key={user.id} value={String(user.id)}>
+                              {user.full_name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth>
+                        <InputLabel>Role</InputLabel>
+                        <Select
+                          value={selectedPermRole}
+                          label="Role"
+                          onChange={(e) =>
+                            setSelectedPermRole(e.target.value as "section_viewer" | "section_editor" | "section_manager")
+                          }
+                        >
+                          {SECTION_ROLE_OPTIONS.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <Button variant="contained" disabled={!selectedPermUserId || savingSection} onClick={onAssignSectionPermission}>
+                        Assign
+                      </Button>
+                    </Stack>
+                  </>
+                )}
+              </Paper>
             )}
-          </section>
 
-          <section className="card">
-            <h2>Danger Zone</h2>
-            <button className="secondary" type="button" onClick={onDelete} disabled={deleting}>
-              {deleting ? "Deleting..." : "Delete task"}
-            </button>
-          </section>
-        </>
-      )}
-    </main>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Assigned Roles
+              </Typography>
+              {displayTaskRoles.length ? (
+                <Stack spacing={1}>
+                  {displayTaskRoles.map((role) => (
+                    <Paper
+                      key={`${role.id}-${role.role}`}
+                      variant="outlined"
+                      sx={{ p: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1.5 }}
+                    >
+                      <Box>
+                        <Typography>
+                          <strong>{role.full_name}</strong> ({role.email}) - {taskRoleLabel(role.role)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          context: {role.scope_type} #{role.scope_id}
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        disabled={assigning}
+                        onClick={async () => {
+                          if (!token) return;
+                          setAssigning(true);
+                          setError(null);
+                          try {
+                            await clearTaskUserRoles(token, taskId, role.id);
+                            const roles = await getTaskUsers(token, taskId);
+                            setTaskRoles(Array.isArray(roles) ? roles : []);
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : "Cannot remove task role");
+                          } finally {
+                            setAssigning(false);
+                          }
+                        }}
+                      >
+                        Remove role
+                      </Button>
+                    </Paper>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography color="text.secondary">No role assignments in task context.</Typography>
+              )}
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Danger Zone
+              </Typography>
+              <Button variant="outlined" color="error" onClick={onDelete} disabled={deleting}>
+                {deleting ? "Deleting..." : "Delete task"}
+              </Button>
+            </Paper>
+          </>
+        )}
+      </Stack>
+    </Container>
   );
 }

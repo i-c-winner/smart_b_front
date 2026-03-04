@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert, Box, Button, CircularProgress, Container, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -141,44 +142,52 @@ export function SettingsPage() {
   };
 
   return (
-    <main>
-      <h1>Settings</h1>
-      <p>Project settings workspace.</p>
-      {(loading || !token) && <div className="card">Loading session...</div>}
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="h4">Settings</Typography>
+          <Typography color="text.secondary">Project settings workspace.</Typography>
+        </Box>
+        {(loading || !token) && (
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <CircularProgress size={20} />
+            <Typography>Loading session...</Typography>
+          </Stack>
+        )}
 
-      {token && (
-        <>
-          <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <strong>Actions</strong>
-            <button
-              className="primary"
-              onClick={() => setShowAddUser((prev) => !prev)}
-              type="button"
-              disabled={!currentCompany}
-            >
-              {showAddUser ? "Close add user" : "Add user"}
-            </button>
-          </div>
-          {dataLoading && <div className="card">Loading projects...</div>}
-          {error && <div className="card error">{error}</div>}
-          {!dataLoading && !error && !currentCompany && (
-            <div className="card">No accessible companies. Ask admin to assign role in company context.</div>
-          )}
-          {!dataLoading && !error && currentCompany && (
-            <>
-              {showAddUser && <CreateCompanyUserForm companyName={currentCompany.name} onCreate={onCreateUser} />}
-              <CreateProjectForm companyName={currentCompany.name} onCreate={onCreateProject} />
-              <ProjectsList
-                projects={projects}
-                companyUsers={companyUsers}
-                adminsByProject={adminsByProject}
-                onAssignAdmin={onAssignAdmin}
-              />
-            </>
-          )}
-        </>
-      )}
-    </main>
+        {token && (
+          <>
+            <Paper variant="outlined" sx={{ p: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography fontWeight={700}>Actions</Typography>
+              <Button variant="contained" onClick={() => setShowAddUser((prev) => !prev)} disabled={!currentCompany}>
+                {showAddUser ? "Close add user" : "Add user"}
+              </Button>
+            </Paper>
+            {dataLoading && (
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <CircularProgress size={20} />
+                <Typography>Loading projects...</Typography>
+              </Stack>
+            )}
+            {error && <Alert severity="error">{error}</Alert>}
+            {!dataLoading && !error && !currentCompany && (
+              <Alert severity="warning">No accessible companies. Ask admin to assign role in company context.</Alert>
+            )}
+            {!dataLoading && !error && currentCompany && (
+              <>
+                {showAddUser && <CreateCompanyUserForm companyName={currentCompany.name} onCreate={onCreateUser} />}
+                <CreateProjectForm companyName={currentCompany.name} onCreate={onCreateProject} />
+                <ProjectsList
+                  projects={projects}
+                  companyUsers={companyUsers}
+                  adminsByProject={adminsByProject}
+                  onAssignAdmin={onAssignAdmin}
+                />
+              </>
+            )}
+          </>
+        )}
+      </Stack>
+    </Container>
   );
 }
-

@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import { FormEvent, useState } from "react";
 
 type Props = {
@@ -31,21 +32,20 @@ export function CreateProjectForm({ companyName, onCreate }: Props) {
   };
 
   return (
-    <section className="card">
-      <h2>Create Project</h2>
-      <p>
-        Current company: <strong>{companyName}</strong>
-      </p>
-      <form onSubmit={onSubmit}>
-        <label>
-          Project name
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
-        {error && <p className="error">{error}</p>}
-        <button className="primary" type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Add project"}
-        </button>
-      </form>
-    </section>
+    <Paper component="section" variant="outlined" sx={{ p: 2 }}>
+      <Stack spacing={2}>
+        <Typography variant="h6">Create Project</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Current company: <strong>{companyName}</strong>
+        </Typography>
+        <Stack component="form" onSubmit={onSubmit} spacing={2}>
+          <TextField label="Project name" value={name} onChange={(e) => setName(e.target.value)} required fullWidth />
+          {error && <Alert severity="error">{error}</Alert>}
+          <Button variant="contained" type="submit" disabled={loading}>
+            {loading ? "Creating..." : "Add project"}
+          </Button>
+        </Stack>
+      </Stack>
+    </Paper>
   );
 }

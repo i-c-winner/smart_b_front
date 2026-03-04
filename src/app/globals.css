@@ -90,7 +90,7 @@ label {
   color: var(--muted);
 }
 
-input {
+input:not(.MuiInputBase-input) {
   width: 100%;
   margin-top: 4px;
   border: 1px solid var(--border);
@@ -99,7 +99,7 @@ input {
   font-size: 14px;
 }
 
-select {
+select:not(.MuiNativeSelect-select) {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -108,19 +108,19 @@ select {
   background: #fff;
 }
 
-button {
+button:not(.MuiButton-root) {
   border: 0;
   border-radius: 8px;
   padding: 10px 14px;
   cursor: pointer;
 }
 
-button.primary {
+button.primary:not(.MuiButton-root) {
   background: var(--accent);
   color: #fff;
 }
 
-button.secondary {
+button.secondary:not(.MuiButton-root) {
   background: #e8edf3;
   color: var(--text);
 }

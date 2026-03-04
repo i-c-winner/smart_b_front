@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, CircularProgress, Container, Stack, Typography } from "@mui/material";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -18,17 +19,24 @@ export function LoginPage() {
 
   if (loading) {
     return (
-      <main>
-        <div className="card">Loading session...</div>
-      </main>
+      <Container maxWidth="sm" sx={{ py: 4 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <CircularProgress size={20} />
+          <Typography>Loading session...</Typography>
+        </Stack>
+      </Container>
     );
   }
 
   return (
-    <main>
-      <h1>Login</h1>
-      <p>Sign in to access dashboard.</p>
-      <LoginForm />
-    </main>
+    <Container maxWidth="sm" sx={{ py: 4 }}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="h4">Login</Typography>
+          <Typography color="text.secondary">Sign in to access dashboard.</Typography>
+        </Box>
+        <LoginForm />
+      </Stack>
+    </Container>
   );
 }

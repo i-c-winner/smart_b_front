@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert, Box, Button, CircularProgress, Container, Paper, Stack, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -338,34 +339,37 @@ export function HomePage() {
   }, [nodes, links, categories, router]);
 
   return (
-    <main
-      style={{
-        maxWidth: "none",
-        width: "100%",
-        padding: "12px 24px",
-        height: "calc(100vh - 56px)",
+    <Container
+      maxWidth={false}
+      sx={{
+        py: 1.5,
+        px: { xs: 1.5, md: 3 },
+        height: "calc(100vh - 64px)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column"
       }}
     >
-      <h1>Context Graph</h1>
-      {(loading || dataLoading) && <div className="card">Loading graph...</div>}
-      {error && <div className="card error">{error}</div>}
-      {!dataLoading && !error && (
-        <section className="card" style={{ flex: 1, marginBottom: 0, overflow: "hidden" }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-            <button
-              className="secondary"
-              type="button"
-              onClick={() => chartInstanceRef.current?.dispatchAction({ type: "restore" })}
-            >
-              Center graph
-            </button>
-          </div>
-          <div ref={chartRef} style={{ width: "100%", height: "calc(100% - 44px)" }} />
-        </section>
+      <Typography variant="h4" sx={{ mb: 1 }}>
+        Context Graph
+      </Typography>
+      {(loading || dataLoading) && (
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+          <CircularProgress size={20} />
+          <Typography>Loading graph...</Typography>
+        </Stack>
       )}
-    </main>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {!dataLoading && !error && (
+        <Paper variant="outlined" sx={{ flex: 1, mb: 0, overflow: "hidden", p: 1.5 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+            <Button variant="outlined" type="button" onClick={() => chartInstanceRef.current?.dispatchAction({ type: "restore" })}>
+              Center graph
+            </Button>
+          </Box>
+          <div ref={chartRef} style={{ width: "100%", height: "calc(100% - 44px)" }} />
+        </Paper>
+      )}
+    </Container>
   );
 }

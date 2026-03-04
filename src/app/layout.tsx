@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { AuthProvider } from "@/shared/lib/auth/auth-context";
+import { MuiProvider } from "@/shared/theme/mui-provider";
 import { AppHeader } from "@/widgets/app-header/app-header";
 
 export const metadata: Metadata = {
@@ -13,10 +14,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          <AppHeader />
-          {children}
-        </AuthProvider>
+        <MuiProvider>
+          <AuthProvider>
+            <AppHeader />
+            {children}
+          </AuthProvider>
+        </MuiProvider>
       </body>
     </html>
   );
