@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import {
-  assignTaskUserRole,
   assignTaskSectionPermission,
   clearTaskSectionPermission,
   clearTaskUserRoles,
@@ -18,18 +17,10 @@ import {
   getTaskUsers,
   getTasksByProject,
   getUsers,
-  updateTaskSection
 } from "@/shared/api/domain-api";
 import { useAuth } from "@/shared/lib/auth/auth-context";
 import { prepareUsersForDisplay } from "@/shared/lib/users/prepare-users-for-display";
 import type { ScopedUserRole, Task, TaskSection, TaskSectionPermission, User } from "@/shared/types/domain";
-
-const ROLE_OPTIONS = [
-  { value: "", label: "No role" },
-  { value: "task_viewer", label: "Task Viewer" },
-  { value: "task_member", label: "Task Member" },
-  { value: "task_manager", label: "Task Manager" }
-] as const;
 
 const SECTION_ROLE_OPTIONS = [
   { value: "section_viewer", label: "Section Viewer" },
@@ -48,13 +39,10 @@ export function TaskSettingsPage() {
   const [task, setTask] = useState<Task | null>(null);
   const [companyUsers, setCompanyUsers] = useState<User[]>([]);
   const [taskRoles, setTaskRoles] = useState<ScopedUserRole[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"" | "task_viewer" | "task_member" | "task_manager">("");
   const [showTaskValueForm, setShowTaskValueForm] = useState(false);
   const [sections, setSections] = useState<TaskSection[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [sectionPermissions, setSectionPermissions] = useState<TaskSectionPermission[]>([]);
-  const [sectionContentText, setSectionContentText] = useState<string>("");
   const [savingSection, setSavingSection] = useState(false);
   const [creatingSection, setCreatingSection] = useState(false);
   const [newSectionKey, setNewSectionKey] = useState("");
@@ -121,17 +109,8 @@ export function TaskSettingsPage() {
   useEffect(() => {
     if (!token || !selectedSectionId) {
       setSectionPermissions([]);
-      setSectionContentText("");
       return;
     }
-    const section = sections.find((item) => item.id === Number(selectedSectionId));
-    const textValue =
-      section?.content && typeof section.content === "object" && !Array.isArray(section.content)
-        ? typeof section.content.text === "string"
-          ? section.content.text
-          : ""
-        : "";
-    setSectionContentText(textValue);
 
     let active = true;
     const loadPerms = async () => {
@@ -149,27 +128,6 @@ export function TaskSettingsPage() {
       active = false;
     };
   }, [token, taskId, selectedSectionId, sections]);
-
-  const onAssignRole = async () => {
-    if (!token) return;
-    const userId = Number(selectedUserId);
-    if (!userId) return;
-    setAssigning(true);
-    setError(null);
-    try {
-      if (!selectedRole) {
-        await clearTaskUserRoles(token, taskId, userId);
-      } else {
-        await assignTaskUserRole(token, taskId, { user_id: userId, role: selectedRole });
-      }
-      const roles = await getTaskUsers(token, taskId);
-      setTaskRoles(Array.isArray(roles) ? roles : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Cannot assign task role");
-    } finally {
-      setAssigning(false);
-    }
-  };
 
   const onDelete = async () => {
     if (!token) return;
@@ -204,28 +162,6 @@ export function TaskSettingsPage() {
       setError(err instanceof Error ? err.message : "Cannot create section");
     } finally {
       setCreatingSection(false);
-    }
-  };
-
-  const onSaveSectionContent = async () => {
-    if (!token || !selectedSectionId) return;
-    setSavingSection(true);
-    setError(null);
-    try {
-      const parsed: Record<string, unknown> = { text: sectionContentText };
-      const updated = await updateTaskSection(token, taskId, Number(selectedSectionId), { content: parsed });
-      setSections((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-      const updatedText =
-        updated.content && typeof updated.content === "object" && !Array.isArray(updated.content)
-          ? typeof updated.content.text === "string"
-            ? updated.content.text
-            : ""
-          : "";
-      setSectionContentText(updatedText);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Cannot update section content");
-    } finally {
-      setSavingSection(false);
     }
   };
 
@@ -330,19 +266,7 @@ export function TaskSettingsPage() {
 
               {selectedSectionId && (
                 <>
-                  <label>
-                    Content
-                    <textarea
-                      value={sectionContentText}
-                      onChange={(e) => setSectionContentText(e.target.value)}
-                      rows={10}
-                      style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}
-                    />
-                  </label>
                   <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button className="primary" type="button" onClick={onSaveSectionContent} disabled={savingSection}>
-                      {savingSection ? "Saving..." : "Save section"}
-                    </button>
                     <button className="secondary" type="button" onClick={onDeleteSection} disabled={savingSection}>
                       Delete section
                     </button>
@@ -464,33 +388,6 @@ export function TaskSettingsPage() {
             ) : (
               <p>No role assignments in task context.</p>
             )}
-          </section>
-
-          <section className="card">
-            <h2>Assign User Role</h2>
-            <div className="project-admin-row">
-              <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
-                <option value="">Select company user</option>
-                {displayCompanyUsers.map((user) => (
-                  <option key={user.id} value={String(user.id)}>
-                    {user.full_name} ({user.email})
-                  </option>
-                ))}
-              </select>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as "" | "task_viewer" | "task_member" | "task_manager")}
-              >
-                {ROLE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <button className="primary" type="button" disabled={!selectedUserId || assigning} onClick={onAssignRole}>
-                {assigning ? "Applying..." : "Apply role"}
-              </button>
-            </div>
           </section>
 
           <section className="card">

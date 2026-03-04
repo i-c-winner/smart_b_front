@@ -48,6 +48,7 @@ export function NodeDetailsPage() {
   const [projectSchedules, setProjectSchedules] = useState<Schedule[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [sectionTextDraft, setSectionTextDraft] = useState("");
+  const [savedSectionText, setSavedSectionText] = useState("");
   const [savingSection, setSavingSection] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
@@ -79,6 +80,7 @@ export function NodeDetailsPage() {
       setProjectSchedules([]);
       setUser(null);
       setSectionTextDraft("");
+      setSavedSectionText("");
       try {
         if (nodeType === "company") {
           const companyData = await getCompany(token, nodeId);
@@ -161,9 +163,12 @@ export function NodeDetailsPage() {
           setProject(foundProject);
           setCompany(foundCompany);
           if (foundSection?.content && typeof foundSection.content === "object" && !Array.isArray(foundSection.content)) {
-            setSectionTextDraft(typeof foundSection.content.text === "string" ? foundSection.content.text : "");
+            const text = typeof foundSection.content.text === "string" ? foundSection.content.text : "";
+            setSectionTextDraft(text);
+            setSavedSectionText(text);
           } else {
             setSectionTextDraft("");
+            setSavedSectionText("");
           }
           return;
         }
@@ -196,12 +201,22 @@ export function NodeDetailsPage() {
         content: { text: sectionTextDraft }
       });
       setSection(updated);
+      const text =
+        updated.content && typeof updated.content === "object" && !Array.isArray(updated.content)
+          ? typeof updated.content.text === "string"
+            ? updated.content.text
+            : ""
+          : "";
+      setSectionTextDraft(text);
+      setSavedSectionText(text);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cannot save section");
     } finally {
       setSavingSection(false);
     }
   };
+
+  const canSaveSection = Boolean(task) && sectionTextDraft !== savedSectionText && !savingSection;
 
   return (
     <main>
@@ -344,7 +359,7 @@ export function NodeDetailsPage() {
             />
           </label>
           <p style={{ marginTop: 8 }}>
-            <button className="primary" type="button" onClick={onSaveSection} disabled={savingSection || !task}>
+            <button className="primary" type="button" onClick={onSaveSection} disabled={!canSaveSection}>
               {savingSection ? "Saving..." : "Save section"}
             </button>
           </p>
