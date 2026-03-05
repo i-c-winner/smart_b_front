@@ -40,3 +40,5 @@ export function LoginPage() {
     </Container>
   );
 }
+
+export default LoginPage;
