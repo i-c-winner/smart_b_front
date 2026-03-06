@@ -16,7 +16,11 @@
     "jspdf": "^4.2.0",
     "next": "14.2.25",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "reveal": "^0.0.4",
+    "slate": "^0.123.0",
+    "slate-react": "^0.123.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "20.17.57",
