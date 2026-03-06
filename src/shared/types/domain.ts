@@ -1,6 +1,7 @@
 export type User = {
   id: number;
   email: string;
+  phone?: string | null;
   full_name: string;
   is_active: boolean;
 };
@@ -8,6 +9,7 @@ export type User = {
 export type UserBrief = {
   id: number;
   email: string;
+  phone?: string | null;
   full_name: string;
 };
 
@@ -56,10 +58,7 @@ export type Schedule = {
   section_id: number | null;
   title: string;
   description: string | null;
-  planned_start_at: string | null;
   planned_end_at: string | null;
-  actual_start_at: string | null;
-  actual_end_at: string | null;
   section_editor_user_id: number | null;
   created_by: number;
 };
@@ -70,6 +69,7 @@ export type TaskSection = {
   key: string;
   title: string;
   content: Record<string, unknown> | null;
+  status: "new" | "in_progress" | "finished";
   position: number;
   version: number;
   updated_by: number | null;

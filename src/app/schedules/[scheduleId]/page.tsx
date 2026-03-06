@@ -1,187 +1,37 @@
 "use client";
 
-import { Alert, CircularProgress, Container, Paper, Stack, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  CircularProgress,
+  Container,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Tooltip,
+  Typography
+} from "@mui/material";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-  getProject,
   getSchedule,
   getScheduleByProject,
   getTask,
   getTaskSectionPermissions,
-  getTaskSections,
-  getUsers
+  getTaskSections
 } from "@/shared/api/domain-api";
 import { useAuth } from "@/shared/lib/auth/auth-context";
-import type { Schedule, Task, TaskSection, User } from "@/shared/types/domain";
+import type { Schedule, TaskSection } from "@/shared/types/domain";
 
-type ChartBoxProps = {
-  title: string;
-  subtitle?: string;
-  plannedStart: string | null;
-  plannedEnd: string | null;
-  actualStart: string | null;
-  actualEnd: string | null;
-};
-
-function formatDate(value: string | null): string {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-}
-
-function toTimestamp(value: string | null): number | null {
-  if (!value) return null;
-  const time = new Date(value).getTime();
-  return Number.isNaN(time) ? null : time;
-}
-
-function ScheduleDateChart({ title, subtitle, plannedStart, plannedEnd, actualStart, actualEnd }: ChartBoxProps) {
-  const chartRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!chartRef.current) return;
-
-    let disposed = false;
-    let chart: {
-      setOption: (option: unknown) => void;
-      resize: () => void;
-      dispose: () => void;
-    } | null = null;
-
-    const init = async () => {
-      const echarts = await import("echarts");
-      if (!chartRef.current || disposed) return;
-      chart = echarts.init(chartRef.current) as unknown as {
-        setOption: (option: unknown) => void;
-        resize: () => void;
-        dispose: () => void;
-      };
-
-      const plannedStartTs = toTimestamp(plannedStart);
-      const plannedEndTs = toTimestamp(plannedEnd);
-      const actualStartTs = toTimestamp(actualStart);
-      const actualEndTs = toTimestamp(actualEnd);
-
-      const ranges = [
-        {
-          label: "planned",
-          start: plannedStartTs,
-          end: plannedEndTs ?? plannedStartTs,
-          color: "#1976d2"
-        },
-        {
-          label: "actual",
-          start: actualStartTs,
-          end: actualEndTs ?? actualStartTs,
-          color: "#2e7d32"
-        }
-      ];
-
-      const hasAnyRange = ranges.some((range) => range.start !== null && range.end !== null);
-      const fallbackNow = Date.now();
-      const starts = ranges
-        .map((range) => range.start)
-        .filter((value): value is number => value !== null);
-      const ends = ranges
-        .map((range) => range.end)
-        .filter((value): value is number => value !== null);
-      const minAxis = starts.length ? Math.min(...starts) : fallbackNow - 3_600_000;
-      const maxAxis = ends.length ? Math.max(...ends) : fallbackNow + 3_600_000;
-      const pad = Math.max(300_000, Math.floor((maxAxis - minAxis) * 0.1));
-
-      const baseData = ranges.map((range) => range.start);
-      const durationData = ranges.map((range) => {
-        if (range.start === null || range.end === null) return null;
-        return Math.max(60_000, range.end - range.start);
-      });
-
-      chart.setOption({
-        title: {
-          text: title,
-          subtext: subtitle ?? "",
-          left: 8,
-          top: 8,
-          textStyle: { fontSize: 14 },
-          subtextStyle: { fontSize: 12 }
-        },
-        grid: {
-          left: 84,
-          right: 24,
-          top: 56,
-          bottom: 36
-        },
-        tooltip: {
-          trigger: "item",
-          formatter: (params: { dataIndex?: number }) => {
-            const index = params.dataIndex ?? 0;
-            const range = ranges[index];
-            if (!range) return "";
-            return `${range.label}<br/>start: ${formatDate(
-              range.start ? new Date(range.start).toISOString() : null
-            )}<br/>end: ${formatDate(range.end ? new Date(range.end).toISOString() : null)}`;
-          }
-        },
-        xAxis: {
-          type: "time",
-          min: minAxis - pad,
-          max: maxAxis + pad,
-          axisLabel: {
-            formatter: (value: number) => formatDate(new Date(value).toISOString())
-          }
-        },
-        yAxis: {
-          type: "category",
-          data: ranges.map((range) => range.label)
-        },
-        series: [
-          {
-            type: "bar",
-            stack: "timeline",
-            silent: true,
-            barWidth: 22,
-            itemStyle: { color: "rgba(0,0,0,0)" },
-            emphasis: { disabled: true },
-            data: baseData
-          },
-          {
-            type: "bar",
-            stack: "timeline",
-            barWidth: 22,
-            data: durationData,
-            itemStyle: {
-              color: (params: { dataIndex: number }) => ranges[params.dataIndex]?.color ?? "#1976d2",
-              borderRadius: 4
-            },
-            label: {
-              show: !hasAnyRange,
-              formatter: () => "no dates",
-              position: "inside"
-            }
-          }
-        ]
-      });
-
-      const onResize = () => chart?.resize();
-      window.addEventListener("resize", onResize);
-      return () => window.removeEventListener("resize", onResize);
-    };
-
-    let cleanupResize: (() => void) | undefined;
-    init().then((cleanup) => {
-      cleanupResize = cleanup;
-    });
-
-    return () => {
-      disposed = true;
-      cleanupResize?.();
-      chart?.dispose();
-    };
-  }, [title, subtitle, plannedStart, plannedEnd, actualStart, actualEnd]);
-
-  return <div ref={chartRef} style={{ width: "100%", height: 260 }} />;
+function statusColor(status: TaskSection["status"]): string {
+  if (status === "finished") return "success.main";
+  if (status === "in_progress") return "warning.main";
+  return "error.main";
 }
 
 export default function ScheduleDetailsPage() {
@@ -191,8 +41,6 @@ export default function ScheduleDetailsPage() {
 
   const scheduleId = useMemo(() => Number(params?.scheduleId), [params?.scheduleId]);
 
-  const [taskSchedule, setTaskSchedule] = useState<Schedule | null>(null);
-  const [task, setTask] = useState<Task | null>(null);
   const [sections, setSections] = useState<TaskSection[]>([]);
   const [sectionSchedules, setSectionSchedules] = useState<Record<number, Schedule>>({});
   const [sectionEditors, setSectionEditors] = useState<Record<number, string>>({});
@@ -206,83 +54,74 @@ export default function ScheduleDetailsPage() {
     }
   }, [loading, token, router]);
 
-  useEffect(() => {
+  const load = useCallback(async (activeGuard = { active: true }) => {
     if (!token || !Number.isFinite(scheduleId)) return;
-    let active = true;
-
-    const load = async () => {
+    const isActive = () => activeGuard.active;
+    try {
       setDataLoading(true);
       setError(null);
 
-      try {
-        const schedule = await getSchedule(token, scheduleId);
-        if (!active) return;
+      const schedule = await getSchedule(token, scheduleId);
+      if (!isActive()) return;
 
-        if (!schedule.task_id) {
-          setTaskSchedule(schedule);
-          setTask(null);
-          setSections([]);
-          setSectionSchedules({});
-          setSectionEditors({});
-          setError("This schedule is not attached to task-level context.");
-          return;
+      if (!schedule.task_id) {
+        setSections([]);
+        setSectionSchedules({});
+        setSectionEditors({});
+        setError("This schedule is not attached to task-level context.");
+        return;
+      }
+
+      const taskData = await getTask(token, schedule.task_id).catch(() => null);
+      const projectSchedules = taskData ? await getScheduleByProject(token, taskData.project_id).catch(() => []) : [];
+      const taskSections = taskData ? await getTaskSections(token, taskData.id).catch(() => []) : [];
+
+      const sectionScheduleMap: Record<number, Schedule> = {};
+      for (const item of projectSchedules) {
+        if (item.section_id) {
+          sectionScheduleMap[item.section_id] = item;
         }
+      }
 
-        const taskData = await getTask(token, schedule.task_id);
-        const project = await getProject(token, taskData.project_id);
+      const sectionEditorMap: Record<number, string> = {};
 
-        const [projectSchedules, taskSections, companyUsers] = await Promise.all([
-          getScheduleByProject(token, taskData.project_id),
-          getTaskSections(token, taskData.id),
-          getUsers(token, project.company_id)
-        ]);
-
-        const sectionScheduleMap: Record<number, Schedule> = {};
-        for (const item of projectSchedules) {
-          if (item.section_id) {
-            sectionScheduleMap[item.section_id] = item;
-          }
-        }
-
-        const userById = new Map<number, User>(companyUsers.map((user) => [user.id, user]));
-        const sectionEditorMap: Record<number, string> = {};
-
+      if (taskData) {
         await Promise.all(
           taskSections.map(async (section) => {
             const perms = await getTaskSectionPermissions(token, taskData.id, section.id).catch(() => []);
             const editors = perms
               .filter((perm) => perm.role === "section_editor")
-              .map((perm) => userById.get(perm.user_id)?.full_name ?? perm.full_name)
+              .map((perm) => perm.full_name)
               .filter(Boolean);
             sectionEditorMap[section.id] = editors.length ? editors.join(", ") : "-";
           })
         );
-
-        if (!active) return;
-        setTaskSchedule(schedule);
-        setTask(taskData);
-        setSections(taskSections);
-        setSectionSchedules(sectionScheduleMap);
-        setSectionEditors(sectionEditorMap);
-      } catch (err) {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "Cannot load schedule details");
-      } finally {
-        if (active) setDataLoading(false);
       }
-    };
 
-    load();
-    return () => {
-      active = false;
-    };
+      if (!isActive()) return;
+      setSections(taskSections);
+      setSectionSchedules(sectionScheduleMap);
+      setSectionEditors(sectionEditorMap);
+    } catch (err) {
+      if (!isActive()) return;
+      setError(err instanceof Error ? err.message : "Cannot load schedule details");
+    } finally {
+      if (isActive()) setDataLoading(false);
+    }
   }, [token, scheduleId]);
+
+  useEffect(() => {
+    if (!token || !Number.isFinite(scheduleId)) return;
+    const activeGuard = { active: true };
+    load(activeGuard);
+    return () => {
+      activeGuard.active = false;
+    };
+  }, [token, scheduleId, load]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 2 }}>
       <Stack spacing={2}>
-        <Typography variant="h4">Task Schedule Details</Typography>
-
         {(loading || dataLoading) && (
           <Stack direction="row" spacing={1.5} alignItems="center">
             <CircularProgress size={20} />
@@ -292,47 +131,126 @@ export default function ScheduleDetailsPage() {
 
         {error && <Alert severity="error">{error}</Alert>}
 
-        {!loading && !dataLoading && taskSchedule && (
+        {!loading && !dataLoading && (
           <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Common Task Schedule
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Task: {task?.title ?? "-"}
-            </Typography>
-            <ScheduleDateChart
-              title={taskSchedule.title}
-              subtitle={`schedule #${taskSchedule.id}`}
-              plannedStart={taskSchedule.planned_start_at}
-              plannedEnd={taskSchedule.planned_end_at}
-              actualStart={taskSchedule.actual_start_at}
-              actualEnd={taskSchedule.actual_end_at}
-            />
-          </Paper>
-        )}
-
-        {!loading && !dataLoading && !!sections.length && (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Sections Schedules
-            </Typography>
-            <Stack spacing={2}>
-              {sections.map((section) => {
-                const sectionSchedule = sectionSchedules[section.id];
-                return (
-                  <Paper key={section.id} variant="outlined" sx={{ p: 1.5 }}>
-                    <ScheduleDateChart
-                      title={section.title}
-                      subtitle={`section_editor: ${sectionEditors[section.id] ?? "-"}`}
-                      plannedStart={sectionSchedule?.planned_start_at ?? null}
-                      plannedEnd={sectionSchedule?.planned_end_at ?? null}
-                      actualStart={sectionSchedule?.actual_start_at ?? null}
-                      actualEnd={sectionSchedule?.actual_end_at ?? null}
-                    />
-                  </Paper>
-                );
-              })}
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 1.5 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box
+                  component="span"
+                  sx={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    border: "5px solid",
+                    borderColor: "error.main",
+                    display: "inline-block",
+                    boxSizing: "border-box"
+                  }}
+                />
+                <Typography variant="body2">Новое</Typography>
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box
+                  component="span"
+                  sx={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    border: "5px solid",
+                    borderColor: "warning.main",
+                    display: "inline-block",
+                    boxSizing: "border-box"
+                  }}
+                />
+                <Typography variant="body2">Принято в работу</Typography>
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box
+                  component="span"
+                  sx={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    border: "5px solid",
+                    borderColor: "success.main",
+                    display: "inline-block",
+                    boxSizing: "border-box"
+                  }}
+                />
+                <Typography variant="body2">Окончено</Typography>
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box component="svg" viewBox="0 0 24 24" sx={{ width: 20, height: 20, display: "block" }}>
+                  <path d="M12 2 22 20a2 2 0 0 1-1.74 3H3.74A2 2 0 0 1 2 20L12 2z" fill="#e40000" />
+                  <rect x="11" y="8" width="2" height="7" rx="1" fill="#fff" />
+                  <circle cx="12" cy="18" r="1.3" fill="#fff" />
+                </Box>
+                <Typography variant="body2">Просрочено</Typography>
+              </Stack>
             </Stack>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Sections
+            </Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Section</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Ответственный</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sections.length ? (
+                  sections.map((section) => {
+                    const schedule = sectionSchedules[section.id];
+                    const plannedEnd = schedule?.planned_end_at ? new Date(schedule.planned_end_at) : null;
+                    const isOverdue = !!plannedEnd && !Number.isNaN(plannedEnd.getTime()) && Date.now() > plannedEnd.getTime();
+                    return (
+                      <TableRow key={section.id}>
+                        <TableCell>{section.title}</TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            {isOverdue ? (
+                              <Tooltip title="Planned end date is in the past">
+                                <Box
+                                  component="svg"
+                                  viewBox="0 0 24 24"
+                                  sx={{ width: 28, height: 28, display: "block" }}
+                                >
+                                  <path d="M12 2 22 20a2 2 0 0 1-1.74 3H3.74A2 2 0 0 1 2 20L12 2z" fill="#e40000" />
+                                  <rect x="11" y="8" width="2" height="7" rx="1" fill="#fff" />
+                                  <circle cx="12" cy="18" r="1.3" fill="#fff" />
+                                </Box>
+                              </Tooltip>
+                            ) : (
+                              <Typography
+                                component="span"
+                                sx={{
+                                  width: 31,
+                                  height: 31,
+                                  borderRadius: "50%",
+                                  border: "8px solid",
+                                  borderColor: statusColor(section.status),
+                                  display: "inline-block",
+                                  boxSizing: "border-box"
+                                }}
+                              >
+                                &nbsp;
+                              </Typography>
+                            )}
+                          </Stack>
+                        </TableCell>
+                        <TableCell>{sectionEditors[section.id] ?? "-"}</TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3}>No sections</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </Paper>
         )}
       </Stack>

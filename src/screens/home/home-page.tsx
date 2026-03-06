@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Box, Button, CircularProgress, Container, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Container, Dialog, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -33,6 +33,19 @@ type GraphLink = {
   value?: string;
 };
 
+type GraphUserInfo = {
+  id: number;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  section_editor_assignments: Array<{
+    section_id: number;
+    section_title: string;
+    project_id: number;
+    project_name: string;
+  }>;
+};
+
 export function HomePage() {
   const router = useRouter();
   const { token, loading } = useAuth();
@@ -48,7 +61,10 @@ export function HomePage() {
   const [dataLoading, setDataLoading] = useState(false);
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [links, setLinks] = useState<GraphLink[]>([]);
+  const [usersByNodeId, setUsersByNodeId] = useState<Record<string, GraphUserInfo>>({});
+  const [selectedUser, setSelectedUser] = useState<GraphUserInfo | null>(null);
   const [search, setSearch] = useState("");
+  const [nodeTypeFilter, setNodeTypeFilter] = useState<string>("all");
 
   const categories = useMemo(
     () => [
@@ -64,13 +80,21 @@ export function HomePage() {
 
   const { displayNodes, displayLinks } = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const filteredByType = nodeTypeFilter === "all"
+      ? nodes
+      : nodes.filter((node) => categories[node.category]?.name === nodeTypeFilter);
+    const filteredNodeIdsByType = new Set(filteredByType.map((node) => node.id));
+    const linksByType = links.filter(
+      (link) => filteredNodeIdsByType.has(link.source) && filteredNodeIdsByType.has(link.target)
+    );
+
     if (!query) {
-      return { displayNodes: nodes, displayLinks: links };
+      return { displayNodes: filteredByType, displayLinks: linksByType };
     }
 
-    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const nodeById = new Map(filteredByType.map((node) => [node.id, node]));
     const matchedNodeIds = new Set<string>();
-    for (const node of nodes) {
+    for (const node of filteredByType) {
       if (node.name.toLowerCase().includes(query) || node.id.toLowerCase().includes(query)) {
         matchedNodeIds.add(node.id);
       }
@@ -78,7 +102,7 @@ export function HomePage() {
 
     const matchedLinkKeys = new Set<string>();
     const includedNodeIds = new Set<string>(matchedNodeIds);
-    for (const link of links) {
+    for (const link of linksByType) {
       const sourceNode = nodeById.get(link.source);
       const targetNode = nodeById.get(link.target);
       const sourceText = `${link.source} ${sourceNode?.name ?? ""}`.toLowerCase();
@@ -93,15 +117,15 @@ export function HomePage() {
       }
     }
 
-    const filteredNodes = nodes.filter((node) => includedNodeIds.has(node.id));
-    const filteredLinks = links.filter((link) => {
+    const filteredNodes = filteredByType.filter((node) => includedNodeIds.has(node.id));
+    const filteredLinks = linksByType.filter((link) => {
       if (!includedNodeIds.has(link.source) || !includedNodeIds.has(link.target)) return false;
       if (matchedNodeIds.has(link.source) || matchedNodeIds.has(link.target)) return true;
       return matchedLinkKeys.has(`${link.source}|${link.target}|${link.value ?? ""}`);
     });
 
     return { displayNodes: filteredNodes, displayLinks: filteredLinks };
-  }, [nodes, links, search]);
+  }, [nodes, links, search, nodeTypeFilter, categories]);
 
   useEffect(() => {
     if (!loading && !token) {
@@ -123,6 +147,7 @@ export function HomePage() {
         const graphNodes: GraphNode[] = [];
         const graphLinks: GraphLink[] = [];
         const userSet = new Set<string>();
+        const graphUsers: Record<string, GraphUserInfo> = {};
 
         for (const company of companies) {
           const companyId = `company-${company.id}`;
@@ -157,6 +182,13 @@ export function HomePage() {
                 symbolSize: 40
               });
             }
+            graphUsers[userId] = {
+              id: user.id,
+              full_name: user.full_name,
+              email: user.email,
+              phone: user.phone ?? null,
+              section_editor_assignments: graphUsers[userId]?.section_editor_assignments ?? []
+            };
             const userRoles = rolesByUser.get(user.id);
             if (userRoles?.length) {
               for (const role of userRoles) {
@@ -189,6 +221,13 @@ export function HomePage() {
                   symbolSize: 40
                 });
               }
+              graphUsers[userId] = {
+                id: role.id,
+                full_name: role.full_name,
+                email: role.email,
+                phone: graphUsers[userId]?.phone ?? null,
+                section_editor_assignments: graphUsers[userId]?.section_editor_assignments ?? []
+              };
               graphLinks.push({ source: projectId, target: userId, value: role.role });
             }
 
@@ -235,6 +274,31 @@ export function HomePage() {
                 for (const perm of sectionPerms) {
                   const userId = `user-${perm.user_id}`;
                   graphLinks.push({ source: userId, target: sectionId, value: perm.role });
+                  if (perm.role === "section_editor") {
+                    const existing = graphUsers[userId];
+                    const assignment = {
+                      section_id: section.id,
+                      section_title: section.title,
+                      project_id: project.id,
+                      project_name: project.name
+                    };
+                    if (existing) {
+                      const alreadyAdded = existing.section_editor_assignments.some(
+                        (item) => item.section_id === section.id
+                      );
+                      if (!alreadyAdded) {
+                        existing.section_editor_assignments.push(assignment);
+                      }
+                    } else {
+                      graphUsers[userId] = {
+                        id: perm.user_id,
+                        full_name: perm.full_name,
+                        email: perm.email,
+                        phone: null,
+                        section_editor_assignments: [assignment]
+                      };
+                    }
+                  }
                 }
               }
             }
@@ -261,6 +325,7 @@ export function HomePage() {
         if (!active) return;
         setNodes(graphNodes);
         setLinks(graphLinks);
+        setUsersByNodeId(graphUsers);
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Cannot load graph data");
@@ -311,9 +376,6 @@ export function HomePage() {
             itemGap: 14,
             textStyle: {
               fontSize: 12
-            },
-            selected: {
-              Company: false
             }
           }
         ],
@@ -382,6 +444,13 @@ export function HomePage() {
           const taskId = rawId.replace("task-", "");
           if (!taskId) return;
           router.push(`/tasks/${taskId}`);
+          return;
+        }
+        if (rawId.startsWith("user-")) {
+          const info = usersByNodeId[rawId];
+          if (info) {
+            setSelectedUser(info);
+          }
         }
       });
 
@@ -404,7 +473,7 @@ export function HomePage() {
       chart?.dispose();
       chartInstanceRef.current = null;
     };
-  }, [displayNodes, displayLinks, categories, router]);
+  }, [displayNodes, displayLinks, categories, router, usersByNodeId]);
 
   return (
     <Container
@@ -430,6 +499,22 @@ export function HomePage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="node title, id, role name..."
         />
+        <FormControl size="small" sx={{ minWidth: 210 }}>
+          <InputLabel id="node-type-filter-label">Node type</InputLabel>
+          <Select
+            labelId="node-type-filter-label"
+            value={nodeTypeFilter}
+            label="Node type"
+            onChange={(e) => setNodeTypeFilter(String(e.target.value))}
+          >
+            <MenuItem value="all">All types</MenuItem>
+            {categories.filter((item) => item.name !== "Company").map((item) => (
+              <MenuItem key={item.name} value={item.name}>
+                {item.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Button variant="outlined" onClick={() => setSearch("")} disabled={!search}>
           Clear
         </Button>
@@ -454,6 +539,33 @@ export function HomePage() {
           <div ref={chartRef} style={{ width: "100%", height: "calc(100% - 44px)" }} />
         </Paper>
       )}
+      <Dialog open={!!selectedUser} onClose={() => setSelectedUser(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>User info</DialogTitle>
+        <DialogContent>
+          {selectedUser && (
+            <Stack spacing={1}>
+              <Typography><strong>ID:</strong> {selectedUser.id}</Typography>
+              <Typography><strong>Name:</strong> {selectedUser.full_name}</Typography>
+              <Typography><strong>Email:</strong> {selectedUser.email}</Typography>
+              <Typography><strong>Phone:</strong> {selectedUser.phone || "-"}</Typography>
+              <Box>
+                <Typography sx={{ fontWeight: 700, mb: 0.5 }}>Section editor:</Typography>
+                {selectedUser.section_editor_assignments.length ? (
+                  <Stack spacing={0.5}>
+                    {selectedUser.section_editor_assignments.map((item) => (
+                      <Typography key={`${item.project_id}-${item.section_id}`} variant="body2">
+                        {item.section_title} (project: {item.project_name})
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2">-</Typography>
+                )}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }

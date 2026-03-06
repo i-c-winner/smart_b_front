@@ -81,7 +81,6 @@ export function createTaskSection(
     title: string;
     content?: Record<string, unknown> | null;
     position?: number;
-    planned_start_at?: string | null;
     planned_end_at?: string | null;
   }
 ): Promise<TaskSection> {
@@ -95,6 +94,19 @@ export function updateTaskSection(
   payload: { key?: string; title?: string; content?: Record<string, unknown> | null; position?: number }
 ): Promise<TaskSection> {
   return http(`/tasks/${taskId}/sections/${sectionId}`, { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export function updateTaskSectionStatus(
+  token: string,
+  taskId: number,
+  sectionId: number,
+  status: "new" | "in_progress" | "finished"
+): Promise<TaskSection> {
+  return http(
+    `/tasks/${taskId}/sections/${sectionId}/status`,
+    { method: "PATCH", body: JSON.stringify({ status }) },
+    token
+  );
 }
 
 export function deleteTaskSection(token: string, taskId: number, sectionId: number): Promise<void> {
@@ -152,6 +164,10 @@ export function getScheduleByProject(token: string, projectId: number): Promise<
 
 export function getSchedule(token: string, scheduleId: number): Promise<Schedule> {
   return http(`/schedules/${scheduleId}`, undefined, token);
+}
+
+export function recalculateTaskSchedule(token: string, taskId: number): Promise<Schedule> {
+  return http(`/tasks/${taskId}/schedule/recalculate`, { method: "POST" }, token);
 }
 
 export function createSchedule(

@@ -4,7 +4,13 @@ import { Alert, Button, CircularProgress, Container, Dialog, DialogActions, Dial
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { getTask, getTaskSectionPermissions, getTaskSections, updateTaskSection } from "@/shared/api/domain-api";
+import {
+  getTask,
+  getTaskSectionPermissions,
+  getTaskSections,
+  updateTaskSection,
+  updateTaskSectionStatus
+} from "@/shared/api/domain-api";
 import { useAuth } from "@/shared/lib/auth/auth-context";
 import type { Task, TaskSection } from "@/shared/types/domain";
 
@@ -56,6 +62,7 @@ export default function TaskDetailsPage() {
   const [editorSectionIds, setEditorSectionIds] = useState<Record<number, boolean>>({});
   const [contentDrafts, setContentDrafts] = useState<Record<number, string>>({});
   const [savingSectionId, setSavingSectionId] = useState<number | null>(null);
+  const [statusUpdatingSectionId, setStatusUpdatingSectionId] = useState<number | null>(null);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -234,6 +241,37 @@ export default function TaskDetailsPage() {
     }
   };
 
+  const nextSectionStatus = (status: TaskSection["status"]): TaskSection["status"] => {
+    if (status === "new") return "in_progress";
+    if (status === "in_progress") return "finished";
+    return "finished";
+  };
+
+  const statusButtonText = (status: TaskSection["status"]): string => {
+    if (status === "new") return "Принять в работу";
+    if (status === "in_progress") return "Окончить редактирование";
+    return "Окончено";
+  };
+
+  const onChangeSectionStatus = async (section: TaskSection) => {
+    if (!token || !taskId || !editorSectionIds[section.id] || section.status === "finished") return;
+    setStatusUpdatingSectionId(section.id);
+    setError(null);
+    try {
+      const updated = await updateTaskSectionStatus(
+        token,
+        taskId,
+        section.id,
+        nextSectionStatus(section.status)
+      );
+      setSections((prev) => prev.map((item) => (item.id === section.id ? updated : item)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cannot update section status");
+    } finally {
+      setStatusUpdatingSectionId(null);
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 2 }}>
       <Stack spacing={2.5}>
@@ -296,13 +334,24 @@ export default function TaskDetailsPage() {
                         setContentDrafts((prev) => ({ ...prev, [section.id]: e.target.value }))
                       }
                     />
-                    <Button
-                      variant="contained"
-                      onClick={() => onSaveSection(section.id)}
-                      disabled={savingSectionId === section.id}
-                    >
-                      Save section
-                    </Button>
+                    <Stack direction="row" spacing={1.25}>
+                      <Button
+                        variant="contained"
+                        onClick={() => onSaveSection(section.id)}
+                        disabled={savingSectionId === section.id}
+                        sx={{ width: 200 }}
+                      >
+                        Save section
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        onClick={() => onChangeSectionStatus(section)}
+                        disabled={statusUpdatingSectionId === section.id || section.status === "finished"}
+                        sx={{ width: 200 }}
+                      >
+                        {statusButtonText(section.status)}
+                      </Button>
+                    </Stack>
                   </Stack>
                 ) : (
                   <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "grey.50", borderRadius: 1.5 }}>

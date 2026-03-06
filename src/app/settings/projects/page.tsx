@@ -87,7 +87,6 @@ export default function ProjectSettingsPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
   const [newSectionKey, setNewSectionKey] = useState("");
   const [newSectionTitle, setNewSectionTitle] = useState("");
-  const [newSectionPlannedStart, setNewSectionPlannedStart] = useState("");
   const [newSectionPlannedEnd, setNewSectionPlannedEnd] = useState("");
 
   const [schedulesBySection, setSchedulesBySection] = useState<Record<number, Schedule>>({});
@@ -370,12 +369,10 @@ export default function ProjectSettingsPage() {
         title: newSectionTitle.trim(),
         content: null,
         position: taskSections.length,
-        planned_start_at: toIsoFromLocalDateTime(newSectionPlannedStart),
         planned_end_at: toIsoFromLocalDateTime(newSectionPlannedEnd)
       });
       setNewSectionKey("");
       setNewSectionTitle("");
-      setNewSectionPlannedStart("");
       setNewSectionPlannedEnd("");
 
       const sections = await getTaskSections(token, selectedTaskId);
@@ -637,14 +634,6 @@ export default function ProjectSettingsPage() {
                         <TextField
                           fullWidth
                           type="datetime-local"
-                          label="Planned start"
-                          InputLabelProps={{ shrink: true }}
-                          value={newSectionPlannedStart}
-                          onChange={(e) => setNewSectionPlannedStart(e.target.value)}
-                        />
-                        <TextField
-                          fullWidth
-                          type="datetime-local"
                           label="Planned end"
                           InputLabelProps={{ shrink: true }}
                           value={newSectionPlannedEnd}
@@ -665,7 +654,6 @@ export default function ProjectSettingsPage() {
                             <TableCell>ID</TableCell>
                             <TableCell>Key</TableCell>
                             <TableCell>Title</TableCell>
-                            <TableCell>Planned start</TableCell>
                             <TableCell>Planned end</TableCell>
                             <TableCell align="right">Action</TableCell>
                           </TableRow>
@@ -685,7 +673,6 @@ export default function ProjectSettingsPage() {
                                   <TableCell>{section.id}</TableCell>
                                   <TableCell>{section.key}</TableCell>
                                   <TableCell>{section.title}</TableCell>
-                                  <TableCell>{formatDateTime(schedule?.planned_start_at ?? null)}</TableCell>
                                   <TableCell>{formatDateTime(schedule?.planned_end_at ?? null)}</TableCell>
                                   <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                     <Button
@@ -703,7 +690,7 @@ export default function ProjectSettingsPage() {
                             })
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={6}>No sections in selected task.</TableCell>
+                              <TableCell colSpan={5}>No sections in selected task.</TableCell>
                             </TableRow>
                           )}
                         </TableBody>
