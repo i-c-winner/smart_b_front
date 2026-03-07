@@ -46,6 +46,61 @@ const INITIAL_VALUE: Descendant[] = [
   } as PresentationElement
 ];
 
+type PresentationTheme = "light" | "dark" | "aurora";
+
+const PRESENTATION_THEMES: Record<
+  PresentationTheme,
+  {
+    label: string;
+    slideBg: string;
+    text: string;
+    subtitle: string;
+    border: string;
+    leftBg: string;
+    tableHeaderBg: string;
+    tableText: string;
+    tableBorder: string;
+    deckBg: string;
+  }
+> = {
+  light: {
+    label: "Light",
+    slideBg: "#ffffff",
+    text: "#0f172a",
+    subtitle: "#475569",
+    border: "#d8dee7",
+    leftBg: "#e5e7eb",
+    tableHeaderBg: "#f1f5f9",
+    tableText: "#0f172a",
+    tableBorder: "#cbd5e1",
+    deckBg: "#f8fafc"
+  },
+  dark: {
+    label: "Dark",
+    slideBg: "#0b1220",
+    text: "#e2e8f0",
+    subtitle: "#94a3b8",
+    border: "#334155",
+    leftBg: "#1e293b",
+    tableHeaderBg: "#1f2937",
+    tableText: "#e2e8f0",
+    tableBorder: "#334155",
+    deckBg: "#020617"
+  },
+  aurora: {
+    label: "Aurora",
+    slideBg: "linear-gradient(145deg, #e0f2fe 0%, #dcfce7 48%, #fef3c7 100%)",
+    text: "#102a43",
+    subtitle: "#28536b",
+    border: "#93c5fd",
+    leftBg: "#bfdbfe",
+    tableHeaderBg: "#dbeafe",
+    tableText: "#102a43",
+    tableBorder: "#93c5fd",
+    deckBg: "#e0f2fe"
+  }
+};
+
 function isSlideBreak(node: Descendant): boolean {
   return SlateElement.isElement(node) && (node as PresentationElement).type === "slide-break";
 }
@@ -155,7 +210,8 @@ function parseSlideTemplate(nodes: Descendant[]): SlideTemplate {
   };
 }
 
-function buildPrintHtml(slides: Descendant[][]): string {
+function buildPrintHtml(slides: Descendant[][], theme: PresentationTheme): string {
+  const activeTheme = PRESENTATION_THEMES[theme];
   const slidesHtml = slides
     .map((slide) => {
       const data = parseSlideTemplate(slide);
@@ -204,34 +260,36 @@ function buildPrintHtml(slides: Descendant[][]): string {
       body {
         margin: 0;
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        color: #0f172a;
-        background: #ffffff;
+        color: ${activeTheme.text};
+        background: ${activeTheme.deckBg};
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
       .print-slide {
         width: 100%;
-        min-height: calc(100vh - 24mm);
-        border: 1px solid #d8dee7;
+        min-height: 170mm;
+        border: 1px solid ${activeTheme.border};
         border-radius: 12px;
         margin: 0;
         display: grid;
         grid-template-columns: 25% 1fr;
         gap: 18px;
-        overflow: hidden;
         break-after: page;
         page-break-after: always;
+        page-break-inside: avoid;
       }
       .print-left {
-        height: 100%;
-        background: #e5e7eb;
+        min-height: 170mm;
+        background: ${activeTheme.leftBg};
       }
       .print-left img {
         width: 100%;
-        height: 100%;
+        height: 170mm;
         object-fit: cover;
       }
       .print-image-placeholder {
         width: 100%;
-        height: 100%;
+        min-height: 170mm;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -243,7 +301,9 @@ function buildPrintHtml(slides: Descendant[][]): string {
         margin: 0;
         display: flex;
         flex-direction: column;
-        min-height: 100%;
+        min-height: 170mm;
+        background: ${activeTheme.slideBg};
+        overflow: visible;
       }
       .print-slide:last-child {
         break-after: auto;
@@ -264,7 +324,7 @@ function buildPrintHtml(slides: Descendant[][]): string {
         margin: 6px 0 0;
         font-size: 26px;
         line-height: 1.3;
-        color: #475569;
+        color: ${activeTheme.subtitle};
         font-weight: 600;
       }
       .print-title-gap {
@@ -282,10 +342,11 @@ function buildPrintHtml(slides: Descendant[][]): string {
       }
       .print-table-wrap {
         margin-top: 14px;
+        overflow-x: auto;
       }
       .print-table-title {
         font-size: 13px;
-        color: #64748b;
+        color: ${activeTheme.subtitle};
         margin-bottom: 6px;
       }
       .print-table {
@@ -295,13 +356,14 @@ function buildPrintHtml(slides: Descendant[][]): string {
       }
       .print-table th,
       .print-table td {
-        border: 1px solid #cbd5e1;
+        border: 1px solid ${activeTheme.tableBorder};
+        color: ${activeTheme.tableText};
         padding: 6px 8px;
         text-align: left;
         vertical-align: top;
       }
       .print-table th {
-        background: #f1f5f9;
+        background: ${activeTheme.tableHeaderBg};
       }
     </style>
   </head>
@@ -311,8 +373,9 @@ function buildPrintHtml(slides: Descendant[][]): string {
 </html>`;
 }
 
-function SlideContent({ nodes }: { nodes: Descendant[] }) {
+function SlideContent({ nodes, theme }: { nodes: Descendant[]; theme: PresentationTheme }) {
   const slide = parseSlideTemplate(nodes);
+  const activeTheme = PRESENTATION_THEMES[theme];
 
   return (
     <Box
@@ -322,13 +385,14 @@ function SlideContent({ nodes }: { nodes: Descendant[] }) {
         minHeight: 360,
         height: "100%",
         border: "1px solid",
-        borderColor: "divider",
+        borderColor: activeTheme.border,
         borderRadius: 2,
         overflow: "hidden",
-        bgcolor: "background.paper"
+        bgcolor: activeTheme.slideBg,
+        color: activeTheme.text
       }}
     >
-      <Box sx={{ height: "100%", bgcolor: "#e5e7eb" }}>
+      <Box sx={{ height: "100%", bgcolor: activeTheme.leftBg }}>
         {slide.imageUrl ? (
           <Box
             component="img"
@@ -348,7 +412,7 @@ function SlideContent({ nodes }: { nodes: Descendant[] }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "text.secondary"
+              color: activeTheme.subtitle
             }}
           >
             <Typography variant="body2">Image</Typography>
@@ -361,7 +425,7 @@ function SlideContent({ nodes }: { nodes: Descendant[] }) {
           <Typography variant="h4" fontWeight={700} sx={{ lineHeight: 1.2 }}>
             {slide.title}
           </Typography>
-          <Typography variant="h6" color="text.secondary" fontWeight={600} sx={{ mt: 0.75 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mt: 0.75, color: activeTheme.subtitle }}>
             {slide.subtitle}
           </Typography>
         </Box>
@@ -385,12 +449,13 @@ function SlideContent({ nodes }: { nodes: Descendant[] }) {
                           key={`slide-cell-${tableIndex}-${rowIndex}-${colIndex}`}
                           sx={{
                             border: "1px solid",
-                            borderColor: "divider",
+                            borderColor: activeTheme.tableBorder,
                             px: 1,
                             py: 0.75,
                             fontSize: rowIndex === 0 ? 13 : 14,
                             fontWeight: rowIndex === 0 ? 700 : 400,
-                            bgcolor: rowIndex === 0 ? "grey.100" : "transparent",
+                            bgcolor: rowIndex === 0 ? activeTheme.tableHeaderBg : "transparent",
+                            color: activeTheme.tableText,
                             textAlign: "left"
                           }}
                         >
@@ -409,69 +474,54 @@ function SlideContent({ nodes }: { nodes: Descendant[] }) {
   );
 }
 
-function RevealDeck({ slides }: { slides: Descendant[][] }) {
-  useEffect(() => {
-    let mounted = true;
-
-    const init = async () => {
-      const revealModule = await import("reveal");
-      const reveal = (revealModule.default ?? revealModule) as {
-        initialize: (config: Record<string, unknown>) => void;
-        sync: () => void;
-      };
-
-      if (!mounted) return;
-
-      reveal.initialize({
-        embedded: true,
-        controls: true,
-        progress: true,
-        slideNumber: true,
-        center: false,
-        hash: false,
-        width: 960,
-        height: 540
-      });
-    };
-
-    init();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+function PresentationDeck({ slides, theme }: { slides: Descendant[][]; theme: PresentationTheme }) {
+  const activeTheme = PRESENTATION_THEMES[theme];
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
-    const syncDeck = async () => {
-      const revealModule = await import("reveal");
-      const reveal = (revealModule.default ?? revealModule) as { sync: () => void };
-      requestAnimationFrame(() => reveal.sync());
-    };
-
-    void syncDeck();
+    setActiveIndex((prev) => Math.min(prev, Math.max(slides.length - 1, 0)));
   }, [slides]);
 
+  const canGoPrev = activeIndex > 0;
+  const canGoNext = activeIndex < slides.length - 1;
+  const currentSlide = slides[activeIndex] ?? slides[0] ?? [];
+
   return (
-    <Box
-      sx={{
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 2,
-        overflow: "hidden",
-        minHeight: 380,
-        backgroundColor: "#111827"
-      }}
-    >
-      <div className="reveal" style={{ height: 420 }}>
-        <div className="slides">
-          {slides.map((slide, index) => (
-            <section key={`reveal-slide-${index}`}>
-              <SlideContent nodes={slide} />
-            </section>
-          ))}
-        </div>
-      </div>
-    </Box>
+    <Stack spacing={1.25}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => setActiveIndex((prev) => Math.max(prev - 1, 0))}
+          disabled={!canGoPrev}
+        >
+          Prev
+        </Button>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Slide {slides.length ? activeIndex + 1 : 0} / {slides.length}
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => setActiveIndex((prev) => Math.min(prev + 1, Math.max(slides.length - 1, 0)))}
+          disabled={!canGoNext}
+        >
+          Next
+        </Button>
+      </Stack>
+      <Box
+        sx={{
+          border: "1px solid",
+          borderColor: activeTheme.border,
+          borderRadius: 2,
+          overflow: "hidden",
+          minHeight: 420,
+          background: activeTheme.deckBg
+        }}
+      >
+        <SlideContent nodes={currentSlide} theme={theme} />
+      </Box>
+    </Stack>
   );
 }
 
@@ -495,6 +545,7 @@ export function PresentPage() {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const excelInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState<Descendant[]>(INITIAL_VALUE);
+  const [theme, setTheme] = useState<PresentationTheme>("light");
   const [selectedImagePath, setSelectedImagePath] = useState<Path | null>(null);
   const [selectedSheetPath, setSelectedSheetPath] = useState<Path | null>(null);
   const slides = useMemo(() => splitToSlides(value), [value]);
@@ -881,7 +932,7 @@ export function PresentPage() {
   };
 
   const printPresentation = () => {
-    const html = buildPrintHtml(slides);
+    const html = buildPrintHtml(slides, theme);
     const frame = document.createElement("iframe");
     frame.style.position = "fixed";
     frame.style.right = "0";
@@ -987,6 +1038,18 @@ export function PresentPage() {
             <Chip size="small" color="primary" variant="outlined" label="Slate.js editor" />
             <Chip size="small" color="primary" variant="outlined" label="Slides layout" />
             <Chip size="small" color="primary" variant="outlined" label="Reveal renderer" />
+          </Stack>
+          <Stack direction="row" spacing={1} sx={{ mt: 1.25 }}>
+            {(Object.keys(PRESENTATION_THEMES) as PresentationTheme[]).map((themeKey) => (
+              <Button
+                key={themeKey}
+                size="small"
+                variant={theme === themeKey ? "contained" : "outlined"}
+                onClick={() => setTheme(themeKey)}
+              >
+                {PRESENTATION_THEMES[themeKey].label}
+              </Button>
+            ))}
           </Stack>
           <Typography sx={{ mt: 1, color: "text.secondary" }}>
             Use &quot;Add Slide&quot; or insert a separator &quot;---&quot; (Slide Break) to split content into slides.
@@ -1145,7 +1208,7 @@ export function PresentPage() {
                     <Typography variant="caption" sx={{ color: "text.secondary", mb: 0.5, display: "block" }}>
                       Slide {index + 1}
                     </Typography>
-                    <SlideContent nodes={slide} />
+                    <SlideContent nodes={slide} theme={theme} />
                   </Paper>
                 ))}
               </Stack>
@@ -1154,7 +1217,7 @@ export function PresentPage() {
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.25 }}>
                 <Typography variant="h6" fontWeight={700}>
-                  Presentation Renderer (Reveal.js)
+                  Presentation Viewer
                 </Typography>
                 <Button
                   variant="contained"
@@ -1169,7 +1232,7 @@ export function PresentPage() {
                   Print
                 </Button>
               </Stack>
-              <RevealDeck slides={slides} />
+              <PresentationDeck slides={slides} theme={theme} />
             </Paper>
           </Stack>
         </Box>
